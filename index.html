@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>RASA Phone Orders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: a service-time board. Summary counts first, then anything that needs a
+   human, then orders by pickup time, then calls. One column on a phone, two on a tablet. */
+:root {
+  --bg: #f6efe6;          /* RASA cream, from the website */
+  --panel: #fffaf4;
+  --ink: #2a211d;
+  --muted: #6e6058;
+  --line: #e4d7c8;
+  --teal: #1f5c54;        /* RASA green, from the website's menu bar */
+  --teal-ink: #ffffff;
+  --brand: #9e2b25;       /* RASA red, from the logo */
+  --ok: #2f7d4a;   --ok-bg: #e3f1e6;
+  --wait: #8a5a00; --wait-bg: #fbedcc;
+  --bad: #b3261e;  --bad-bg: #fbe1dd;
+  --closed: #6e6058; --closed-bg: #ece4da;
+  --agent-bg: #e8f0ee;
+  --caller-bg: #f3e9dd;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1715; --panel: #241f1c; --ink: #f2e9df; --muted: #b5a698; --line: #3a322d;
+    --teal: #4fa89a; --teal-ink: #0f1a18; --brand: #e0776d;
+    --ok: #7fcf98; --ok-bg: #1f3326; --wait: #f0c56a; --wait-bg: #3a2e14;
+    --bad: #ff8f84; --bad-bg: #42201d; --closed: #b5a698; --closed-bg: #2e2824;
+    --agent-bg: #1f2e2b; --caller-bg: #2f2620;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+#board { display: grid; gap: 20px; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+h1 .mark { color: var(--brand); }
+h2 { font-size: 1.15rem; font-weight: 800; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+
+/* Top bar */
+header.top { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: space-between; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
+  padding: 8px 14px; min-height: 40px;
+}
+.btn.primary { background: var(--teal); color: var(--teal-ink); border-color: var(--teal); font-weight: 700; }
+.btn:disabled { opacity: .6; cursor: default; }
+select.btn { padding-right: 10px; }
+
+/* Summary counts */
+.tally { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tally div { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.tally b { display: block; font-family: var(--display); font-size: 1.9rem; font-weight: 800; line-height: 1; }
+.tally span { font-size: .85rem; color: var(--muted); }
+.tally .bad b { color: var(--bad); }
+.tally .wait b { color: var(--wait); }
+.tally .ok b { color: var(--ok); }
+@media (max-width: 560px) { .tally { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Sections */
+section { display: grid; gap: 10px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+.empty { background: var(--panel); border: 1px dashed var(--line); border-radius: 14px; padding: 16px; color: var(--muted); }
+
+/* Order card */
+.order { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.order.check { border-color: var(--bad); box-shadow: inset 4px 0 0 var(--bad); }
+.order-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.when { font-family: var(--display); font-weight: 800; font-size: 1.25rem; line-height: 1.1; }
+.when small { display: block; font-family: var(--body); font-weight: 400; font-size: .8rem; color: var(--muted); margin-top: 2px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.ok { color: var(--ok); background: var(--ok-bg); }
+.chip.waiting { color: var(--wait); background: var(--wait-bg); }
+.chip.check { color: var(--bad); background: var(--bad-bg); }
+.chip.closed { color: var(--closed); background: var(--closed-bg); }
+.who { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.who strong { font-size: 1.05rem; }
+.items { white-space: pre-line; margin: 0; font-size: .95rem; overflow-wrap: anywhere; }
+.note { font-size: .9rem; margin: 0; }
+.order.check .note { color: var(--bad); font-weight: 700; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .85rem; color: var(--muted); }
+.facts .yes { color: var(--ok); }
+.facts .no { color: var(--bad); font-weight: 700; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a, .links button { font-size: .9rem; border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 6px 12px; color: var(--ink); text-decoration: none; }
+.links a:hover, .links button:hover { border-color: var(--teal); }
+.copy { border: 0; background: none; padding: 0 2px; color: var(--teal); text-decoration: underline; font-size: .85rem; }
+
+/* Calls */
+.calls { display: grid; gap: 8px; }
+.call { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.call .t { font-variant-numeric: tabular-nums; font-weight: 700; }
+.call .s { min-width: 0; }
+.call .s div { overflow-wrap: anywhere; }
+.call .s .sum { font-size: .85rem; color: var(--muted); }
+.tag { font-size: .75rem; font-weight: 700; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+.tag.t-order { color: var(--ok); background: var(--ok-bg); }
+.tag.t-none { color: var(--closed); background: var(--closed-bg); }
+.tag.t-msg { color: var(--wait); background: var(--wait-bg); }
+.tag.t-lost { color: var(--bad); background: var(--bad-bg); }
+@media (max-width: 560px) { .call { grid-template-columns: auto minmax(0, 1fr); } .call .go { grid-column: 1 / -1; justify-self: start; } }
+
+/* Transcript panel */
+.sheet { position: fixed; inset: 0; background: rgb(0 0 0 / .45); display: grid; justify-items: end; z-index: 20; }
+.sheet[hidden] { display: none; }
+.sheet .panel {
+  background: var(--bg); width: min(560px, 100%); height: 100%; overflow-y: auto; display: grid; align-content: start; gap: 12px;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) 16px;
+}
+.sheet .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.line { border-radius: 12px; padding: 8px 12px; max-width: 88%; }
+.line.agent { background: var(--agent-bg); justify-self: start; }
+.line.caller { background: var(--caller-bg); justify-self: end; }
+.line .meta { font-size: .75rem; color: var(--muted); }
+.line .tools { font-size: .8rem; color: var(--teal); font-weight: 700; }
+
+/* Login */
+.login { max-width: 420px; margin: 10vh auto 0; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: grid; gap: 14px; }
+.login input[type=password] { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--bg); }
+.login label.check { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--muted); }
+.error { color: var(--bad); font-weight: 700; margin: 0; }
+.banner { background: var(--wait-bg); color: var(--wait); border-radius: 12px; padding: 10px 14px; font-size: .9rem; }
+.banner.bad { background: var(--bad-bg); color: var(--bad); }
+@media (prefers-reduced-motion: no-preference) { .order, .call { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <form class="login" id="login" autocomplete="on">
+    <h1><span class="mark">RASA</span> Phone Orders</h1>
+    <p class="muted" style="margin:0">Orders taken by the phone agent, checked against Square, with every call and its transcript.</p>
+    <input type="text" name="username" value="rasa-dashboard" autocomplete="username" hidden>
+    <input type="password" id="pw" placeholder="Dashboard password" autocomplete="current-password" required>
+    <label class="check"><input type="checkbox" id="remember"> Stay signed in on this device</label>
+    <p class="error" id="login-error" hidden></p>
+    <button class="btn primary" type="submit" id="login-btn">Open dashboard</button>
+  </form>
+
+  <div id="board" hidden>
+    <header class="top">
+      <div>
+        <h1><span class="mark">RASA</span> Phone Orders</h1>
+        <div class="muted num" id="updated">Loading…</div>
+      </div>
+      <div class="controls">
+        <select class="btn" id="days" aria-label="How far back">
+          <option value="1">Last 24 hours</option>
+          <option value="3" selected>Last 3 days</option>
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+        </select>
+        <button class="btn primary" id="refresh">Refresh</button>
+        <button class="btn" id="signout">Sign out</button>
+      </div>
+    </header>
+
+    <div id="banners"></div>
+
+    <div class="tally" id="tally"></div>
+
+    <section id="needs">
+      <div class="section-head"><h2>Needs checking</h2><span class="muted">Not matched in Square, or not finished. Act on these first.</span></div>
+      <div class="list" id="needs-list"></div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>Phone orders</h2><span class="muted">By pickup time, latest first</span></div>
+      <div class="list" id="orders-list"></div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>Calls</h2><span class="muted">Every call the agent answered</span></div>
+      <div class="calls" id="calls-list"></div>
+    </section>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="bar">
+      <div><h2 id="sheet-title">Call</h2><div class="muted num" id="sheet-sub"></div></div>
+      <button class="btn" id="sheet-close">Close</button>
+    </div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const API = "https://viwdlolzckqnulapgsyu.supabase.co/functions/v1/orders-dashboard";
+const TZ = "Australia/Perth";
+const KEY = "rasa-dashboard-pw";
+const $ = (id) => document.getElementById(id);
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+
+const store = {
+  get() { try { return sessionStorage.getItem(KEY) || localStorage.getItem(KEY) || ""; } catch { return ""; } },
+  set(pw, remember) {
+    try { sessionStorage.setItem(KEY, pw); if (remember) localStorage.setItem(KEY, pw); else localStorage.removeItem(KEY); } catch {}
+  },
+  clear() { try { sessionStorage.removeItem(KEY); localStorage.removeItem(KEY); } catch {} },
+};
+let password = store.get();
+let timer = null;
+
+async function api(body) {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-dashboard-password": password },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { const e = new Error(data.reason || "Wrong password."); e.auth = true; throw e; }
+  if (!res.ok) throw new Error(data.reason || `The dashboard didn't load (error ${res.status}).`);
+  return data;
+}
+
+const fmt = {
+  day: new Intl.DateTimeFormat("en-AU", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }),
+  time: new Intl.DateTimeFormat("en-AU", { timeZone: TZ, hour: "numeric", minute: "2-digit" }),
+  dayKey: new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }),
+};
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const today = fmt.dayKey.format(new Date());
+  const tomorrow = fmt.dayKey.format(new Date(Date.now() + 86400000));
+  const key = fmt.dayKey.format(d);
+  const day = key === today ? "Today" : key === tomorrow ? "Tomorrow" : fmt.day.format(d);
+  return `${day}, ${fmt.time.format(d).replace(" ", "").toLowerCase()}`;
+}
+function mins(secs) {
+  if (secs == null) return "";
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return m ? `${m} min ${s} s` : `${s} s`;
+}
+const CHIP = { ok: "In Square", waiting: "Waiting for payment", check: "Check this", closed: "Closed" };
+
+function copyBtn(text) {
+  return h("button", {
+    class: "copy", type: "button", "aria-label": `Copy ${text}`,
+    onclick: async (e) => {
+      const b = e.currentTarget;
+      try { await navigator.clipboard.writeText(text); b.textContent = "Copied"; }
+      catch { b.textContent = "Select and copy"; }
+      setTimeout(() => (b.textContent = "Copy"), 1500);
+    },
+  }, "Copy");
+}
+
+function orderCard(o) {
+  return h("article", { class: `order ${o.check}` },
+    h("div", { class: "order-top" },
+      h("div", { class: "when num" }, when(o.pickup_at), h("small", null, `Pickup · ordered ${when(o.created_at)}`)),
+      h("span", { class: `chip ${o.check}` }, CHIP[o.check] || o.check),
+    ),
+    h("div", { class: "who" },
+      h("strong", null, o.name),
+      h("span", { class: "num" }, o.phone, " ", copyBtn(o.phone.replace(/\s/g, ""))),
+      h("span", { class: "num" }, o.total),
+    ),
+    h("p", { class: "items" }, o.items),
+    h("p", { class: "note" }, o.note),
+    h("div", { class: "facts num" },
+      h("span", null, "Ref ", o.reference, " ", copyBtn(o.reference)),
+      h("span", { class: o.in_square ? "yes" : o.in_square === false ? "no" : "" },
+        o.in_square ? (o.square_paid ? "Square: paid" : "Square: not paid") : o.in_square === false ? "Square: no order" : "Square: couldn't check"),
+      o.payment_method === "payment_link" ? h("span", { class: o.link_text_sent ? "yes" : "no" }, o.link_text_sent ? "Link texted" : o.link_text_sent === false ? "Link text failed" : "Link text pending") : null,
+      o.status === "paid" ? h("span", { class: o.kitchen_text_sent ? "yes" : "no" }, o.kitchen_text_sent ? "Kitchen texted" : "Kitchen text pending") : null,
+    ),
+    h("div", { class: "links" },
+      o.square_url ? h("a", { href: o.square_url, target: "_blank", rel: "noopener" }, "Open in Square") : null,
+      o.call_id ? h("button", { type: "button", onclick: () => openCall(o.call_id) }, "Read call") : null,
+      o.call_url ? h("a", { href: o.call_url, target: "_blank", rel: "noopener" }, "Play recording") : null,
+    ),
+  );
+}
+
+function callRow(c, ordersByCall) {
+  const o = ordersByCall.get(c.id);
+  const tag = o ? h("span", { class: "tag t-order" }, "Order")
+    : c.placed_order ? h("span", { class: "tag t-lost" }, "Order not saved")
+    : c.took_message ? h("span", { class: "tag t-msg" }, "Message")
+    : h("span", { class: "tag t-none" }, "No order");
+  return h("div", { class: "call" },
+    h("div", { class: "t" }, when(c.started_at)),
+    h("div", { class: "s" },
+      h("div", null, c.title || "Call", " ", tag, h("span", { class: "muted num" }, "  ", mins(c.duration_secs))),
+      c.summary ? h("div", { class: "sum" }, c.summary) : null,
+    ),
+    h("button", { class: "btn go", type: "button", onclick: () => openCall(c.id) }, "Transcript"),
+  );
+}
+
+function render(data) {
+  $("updated").textContent = `Updated ${when(data.generated_at)}. Refreshes every minute.`;
+  const banners = $("banners"); banners.replaceChildren();
+  if (data.calls_problem) banners.append(h("div", { class: "banner" }, data.calls_problem));
+
+  const orders = data.orders || [];
+  const calls = data.calls || [];
+  const byCall = new Map(orders.filter((o) => o.call_id).map((o) => [o.call_id, o]));
+  const needs = orders.filter((o) => o.check === "check");
+  const lost = calls.filter((c) => c.placed_order && !byCall.has(c.id));
+  const n = (k) => orders.filter((o) => o.check === k).length;
+
+  $("tally").replaceChildren(
+    h("div", { class: needs.length + lost.length ? "bad" : "" }, h("b", { class: "num" }, needs.length + lost.length), h("span", null, "Need checking")),
+    h("div", { class: "wait" }, h("b", { class: "num" }, n("waiting")), h("span", null, "Waiting for payment")),
+    h("div", { class: "ok" }, h("b", { class: "num" }, n("ok")), h("span", null, "Paid and in Square")),
+    h("div", null, h("b", { class: "num" }, data.calls ? calls.length : "–"), h("span", null, "Calls")),
+  );
+
+  const needsList = $("needs-list");
+  needsList.replaceChildren(...needs.map(orderCard), ...lost.map((c) => h("article", { class: "order check" },
+    h("div", { class: "order-top" }, h("div", { class: "when num" }, when(c.started_at), h("small", null, "Call")), h("span", { class: "chip check" }, "Check this")),
+    h("p", { class: "note" }, "The agent tried to place an order on this call, but there's no order record. Read the call and contact the customer."),
+    c.summary ? h("p", { class: "items" }, c.summary) : null,
+    h("div", { class: "links" }, h("button", { type: "button", onclick: () => openCall(c.id) }, "Read call")),
+  )));
+  $("needs").hidden = needs.length + lost.length === 0;
+
+  const sorted = [...orders].sort((a, b) => String(b.pickup_at).localeCompare(String(a.pickup_at)));
+  $("orders-list").replaceChildren(...(sorted.length ? sorted.map(orderCard)
+    : [h("div", { class: "empty" }, `No phone orders in this period. Orders the agent places show here with their Square status.`)]));
+
+  $("calls-list").replaceChildren(...(!data.calls ? [h("div", { class: "empty" }, "Calls will show here once the ElevenLabs key can read them.")]
+    : calls.length ? calls.map((c) => callRow(c, byCall))
+    : [h("div", { class: "empty" }, "No calls in this period.")]));
+}
+
+async function load() {
+  const btn = $("refresh"); btn.disabled = true; btn.textContent = "Refreshing…";
+  try {
+    const data = await api({ view: "overview", days: Number($("days").value) });
+    render(data);
+  } catch (e) {
+    if (e.auth) return signOut(e.message);
+    $("banners").replaceChildren(h("div", { class: "banner bad" }, e.message || "Couldn't load. Check the internet connection and try again."));
+  } finally {
+    btn.disabled = false; btn.textContent = "Refresh";
+  }
+}
+
+async function openCall(id) {
+  $("sheet-title").textContent = "Call";
+  $("sheet-sub").textContent = "Loading transcript…";
+  $("sheet-body").replaceChildren();
+  $("sheet").hidden = false;
+  $("sheet-close").focus();
+  try {
+    const c = await api({ view: "call", id });
+    if (!c.ok) { $("sheet-sub").textContent = c.reason; return; }
+    $("sheet-title").textContent = c.title || "Call";
+    $("sheet-sub").textContent = [when(c.started_at), mins(c.duration_secs), c.caller ? `from ${c.caller}` : "hidden number"].filter(Boolean).join(" · ");
+    $("sheet-body").replaceChildren(
+      c.summary ? h("p", { class: "note" }, c.summary) : null,
+      h("div", { style: "display:grid;gap:8px" }, ...c.lines.map((l) => h("div", { class: `line ${l.role}` },
+        h("div", { class: "meta num" }, l.role === "agent" ? "Agent" : "Caller", l.at_secs != null ? ` · ${mins(l.at_secs)}` : ""),
+        l.text ? h("div", null, l.text) : null,
+        l.tools.length ? h("div", { class: "tools" }, "→ ", l.tools.join(", ").replace(/_/g, " ")) : null,
+      ))),
+      h("div", { class: "links" }, h("a", { href: c.url, target: "_blank", rel: "noopener" }, "Play recording in ElevenLabs")),
+    );
+  } catch (e) {
+    if (e.auth) { closeSheet(); return signOut(e.message); }
+    $("sheet-sub").textContent = e.message;
+  }
+}
+function closeSheet() { $("sheet").hidden = true; }
+
+function showBoard() {
+  $("login").hidden = true; $("board").hidden = false;
+  load();
+  clearInterval(timer);
+  timer = setInterval(() => { if (!document.hidden && $("sheet").hidden) load(); }, 60000);
+}
+function signOut(message) {
+  clearInterval(timer); store.clear(); password = "";
+  $("board").hidden = true; $("login").hidden = false;
+  const err = $("login-error"); err.hidden = !message; err.textContent = message || "";
+  $("pw").value = ""; $("pw").focus();
+}
+
+$("login").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  password = $("pw").value;
+  const btn = $("login-btn"); btn.disabled = true; btn.textContent = "Checking…";
+  try {
+    const data = await api({ view: "overview", days: Number($("days").value) });
+    store.set(password, $("remember").checked);
+    $("login").hidden = true; $("board").hidden = false;
+    render(data);
+    clearInterval(timer);
+    timer = setInterval(() => { if (!document.hidden && $("sheet").hidden) load(); }, 60000);
+  } catch (err) {
+    $("login-error").hidden = false;
+    $("login-error").textContent = err.auth ? "That password didn't work." : (err.message || "Couldn't reach the dashboard. Try again.");
+  } finally {
+    btn.disabled = false; btn.textContent = "Open dashboard";
+  }
+});
+$("refresh").addEventListener("click", load);
+$("days").addEventListener("change", load);
+$("signout").addEventListener("click", () => signOut(""));
+$("sheet-close").addEventListener("click", closeSheet);
+$("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && password && !$("board").hidden) load(); });
+
+if (password) showBoard(); else $("pw").focus();
+</script>
+</body>
+</html>
