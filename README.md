@@ -13,3 +13,10 @@ A second page at `/orders/insights/` for the owners: sales, customers, and Googl
 ads, with daily insights. It also holds no data: it loads everything from the
 `insights-dashboard` function, which needs its own password (`INSIGHTS_PASSWORD`), separate
 from the staff password above.
+
+## RASA Food cost (`insights/cogs/`)
+
+The owners' food cost (COGS) page at `/orders/insights/cogs/`: supplier receipts (photo or
+PDF, read by Claude, checked and confirmed by an owner), ingredients and their prices. Same
+password as Insights. It holds no data: everything comes from the `cogs` function, and
+receipt photos stay in a private Supabase Storage bucket (the page gets 10-minute links).

@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>RASA Food cost</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* RASA Food cost: supplier receipts, ingredients and prices (owners only).
+   Same look and password as RASA Insights. Built for a phone first. */
+:root {
+  --bg: #f6efe6; --panel: #fffaf4; --ink: #2a211d; --muted: #6e6058; --line: #e4d7c8;
+  --teal: #1f5c54; --teal-ink: #fff; --brand: #9e2b25;
+  --good: #2f7d4a; --good-bg: #e3f1e6; --watch: #b3261e; --watch-bg: #fbe1dd;
+  --note: #6e6058; --note-bg: #ece4da; --data: #8a5a00; --data-bg: #fbedcc;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1715; --panel: #241f1c; --ink: #f2e9df; --muted: #b5a698; --line: #3a322d;
+    --teal: #4fa89a; --teal-ink: #0f1a18; --brand: #e0776d;
+    --good: #7fcf98; --good-bg: #1f3326; --watch: #ff8f84; --watch-bg: #42201d;
+    --note: #b5a698; --note-bg: #2e2824; --data: #f0c56a; --data-bg: #3a2e14;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body);
+  padding: max(14px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(28px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+}
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: 1.5rem; font-weight: 800; }
+h1 .mark { color: var(--brand); }
+h2 { font-size: 1.15rem; font-weight: 800; }
+h3 { font-size: 1rem; font-weight: 800; }
+p { margin: 0; }
+a { color: var(--teal); }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.num { font-variant-numeric: tabular-nums; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; min-height: 42px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.btn.primary { background: var(--teal); color: var(--teal-ink); border-color: var(--teal); font-weight: 700; }
+.btn.danger { color: var(--watch); }
+.btn.small { min-height: 34px; padding: 4px 11px; font-size: .88rem; }
+.btn[aria-pressed="true"] { background: var(--teal); color: var(--teal-ink); border-color: var(--teal); }
+.btn:disabled { opacity: .55; cursor: default; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; min-width: 0; }
+section { display: grid; gap: 12px; align-content: start; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.between { justify-content: space-between; }
+header.top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+input[type=text], input[type=number], input[type=date], input[type=password], input[type=search], select, textarea {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 7px 9px; min-height: 42px; width: 100%; min-width: 0;
+}
+textarea { min-height: 64px; }
+label.f { display: grid; gap: 3px; font-size: .82rem; color: var(--muted); min-width: 0; }
+label.f > span { font-weight: 700; }
+label.chk { display: inline-flex; gap: 8px; align-items: center; min-height: 42px; }
+label.chk input { width: 20px; height: 20px; }
+.grid { display: grid; gap: 10px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 640px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tag { display: inline-flex; align-items: center; border-radius: 999px; padding: 1px 9px; font-size: .76rem; font-weight: 700; white-space: nowrap; }
+.tag.good { color: var(--good); background: var(--good-bg); }
+.tag.bad { color: var(--watch); background: var(--watch-bg); }
+.tag.neutral { color: var(--note); background: var(--note-bg); }
+.tag.warn { color: var(--data); background: var(--data-bg); }
+.err { color: var(--watch); font-weight: 700; }
+.notice { border-radius: 12px; padding: 9px 12px; font-size: .92rem; }
+.notice.bad { background: var(--watch-bg); color: var(--watch); }
+.notice.warn { background: var(--data-bg); color: var(--data); }
+.notice.good { background: var(--good-bg); color: var(--good); }
+.notice.neutral { background: var(--note-bg); color: var(--note); }
+.notice ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* Lists */
+.list { display: grid; gap: 8px; }
+.item { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; text-align: left; width: 100%; }
+.item .t { font-weight: 700; }
+.item .s { font-size: .85rem; color: var(--muted); }
+.item .r { text-align: right; font-variant-numeric: tabular-nums; }
+.cat { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 6px; }
+
+/* Receipt editor */
+.editor { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .editor { grid-template-columns: 1fr; } }
+.photos { display: grid; gap: 6px; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto; }
+@media (max-width: 860px) { .photos { position: static; max-height: 60vh; } }
+.photos img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; background: #fff; }
+.photos .pdf { display: block; padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: 10px; }
+.line { border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: grid; gap: 8px; background: var(--panel); }
+.line.attn { border-color: var(--data); box-shadow: inset 4px 0 0 var(--data); }
+.line.not { opacity: .8; }
+.line .calc { font-size: .84rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.line .top { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.sum { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.sum b { text-align: right; }
+.sticky-actions { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0 4px; display: flex; flex-wrap: wrap; gap: 8px; z-index: 3; }
+.progress { display: flex; gap: 10px; align-items: center; }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--teal); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tables */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: .78rem; color: var(--muted); font-weight: 700; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 16px; width: min(560px, calc(100vw - 20px)); max-height: calc(100vh - 30px); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.signin { max-width: 420px; margin: 12vh auto 0; display: grid; gap: 12px; }
+footer { font-size: .8rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="signin" class="signin card" hidden>
+  <h1><span class="mark">RASA</span> Food cost</h1>
+  <p class="muted">Receipts, ingredients and prices. Owners only, same password as Insights.</p>
+  <form id="signinForm" style="display:grid;gap:10px">
+    <label class="f"><span>Password</span><input id="pw" type="password" autocomplete="current-password" required></label>
+    <label class="chk small"><input id="remember" type="checkbox"> Keep me signed in on this device</label>
+    <button class="btn primary" type="submit">Sign in</button>
+    <div id="signinErr" class="err" role="alert"></div>
+  </form>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header class="top">
+    <h1><span class="mark">RASA</span> Food cost</h1>
+    <div class="tabs">
+      <button class="btn" data-tab="receipts" aria-pressed="true">Receipts</button>
+      <button class="btn" data-tab="ingredients" aria-pressed="false">Ingredients</button>
+      <button class="btn" data-tab="suppliers" aria-pressed="false">Suppliers</button>
+      <a class="btn" href="../">Insights</a>
+    </div>
+  </header>
+  <div id="status" class="small muted" role="status"></div>
+
+  <!-- Receipts -->
+  <div id="receipts" class="wrap">
+    <section class="card">
+      <div class="row between"><h2>Add a receipt</h2><span id="aiState" class="small muted"></span></div>
+      <p class="small muted">Take a photo (or choose several for a long receipt, top to bottom), or pick a PDF invoice. You check every line before it counts.</p>
+      <div class="row">
+        <label class="btn primary" for="file">Photo or PDF</label>
+        <input id="file" type="file" accept="image/*,application/pdf" multiple hidden>
+        <button class="btn" id="byHand">Enter by hand</button>
+      </div>
+      <div id="uploadState" hidden></div>
+    </section>
+    <section>
+      <div class="row between"><h2>Receipts</h2><span class="small muted" id="recCount"></span></div>
+      <div class="list" id="recList"></div>
+    </section>
+  </div>
+
+  <!-- One receipt -->
+  <div id="receipt" class="wrap" hidden>
+    <div class="row between">
+      <button class="btn" id="back">Back to receipts</button>
+      <span id="recState"></span>
+    </div>
+    <div class="editor">
+      <div class="photos" id="photos"></div>
+      <div class="grid" id="form"></div>
+    </div>
+  </div>
+
+  <!-- Ingredients -->
+  <div id="ingredients" class="wrap" hidden>
+    <section class="card">
+      <div class="row between"><h2>Ingredients</h2><button class="btn primary" id="newIng">Add ingredient</button></div>
+      <p class="small muted">Costs are ex GST, per base unit, from confirmed receipts. "Counted" items are counted at the fortnightly stocktake; the rest (spices, oil, small sauces) are costed when bought.</p>
+      <input type="search" id="ingSearch" placeholder="Search ingredients" aria-label="Search ingredients">
+    </section>
+    <div id="ingAlerts"></div>
+    <div class="list" id="ingList"></div>
+  </div>
+
+  <!-- Suppliers -->
+  <div id="suppliers" class="wrap" hidden>
+    <section class="card">
+      <div class="row between"><h2>Suppliers</h2><button class="btn primary" id="newSup">Add supplier</button></div>
+      <p class="small muted">"Prices include GST" is the usual for that supplier's receipts (shops yes, Bidfood invoices no). You can change it on any receipt.</p>
+    </section>
+    <div class="list" id="supList"></div>
+  </div>
+
+  <footer>Costs are ex GST. Only confirmed receipts count. Photos are kept privately in RASA's Supabase. Nothing here changes Square.</footer>
+</div>
+</div>
+
+<dialog id="ingDialog">
+  <form method="dialog" id="ingForm" class="grid">
+    <h2 id="ingTitle">Ingredient</h2>
+    <label class="f"><span>Name</span><input type="text" name="name" required maxlength="60" placeholder="e.g. Chicken thigh fillet"></label>
+    <div class="grid g2">
+      <label class="f"><span>Category</span><input type="text" name="category" list="cats" placeholder="e.g. Meat"></label>
+      <label class="f"><span>Base unit</span><select name="base_unit"><option value="kg">kg</option><option value="L">L (litres)</option><option value="each">each</option></select></label>
+    </div>
+    <label class="chk"><input type="checkbox" name="counted"> Count it at the stocktake</label>
+    <p class="small muted" style="margin-top:-8px">Untick for small items (spices, oil, garlic) that are simply costed when bought.</p>
+    <label class="chk"><input type="checkbox" name="gst_free"> Usually GST-free (basic food)</label>
+    <div>
+      <div class="row between"><b class="small">Other units (for receipts and the stocktake)</b><button type="button" class="btn small" id="addUnit">Add unit</button></div>
+      <p class="small muted">For example "5kg bag" = 5 kg, "2L tub" = 2 L, "carton of 24" = 24 each.</p>
+      <div id="units" class="grid" style="margin-top:6px"></div>
+    </div>
+    <label class="f"><span>Notes</span><textarea name="notes" maxlength="300"></textarea></label>
+    <label class="chk"><input type="checkbox" name="active"> In use</label>
+    <div id="ingHist"></div>
+    <div id="ingErr" class="err" role="alert"></div>
+    <div class="row"><button class="btn primary" value="save" id="ingSave">Save</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+<datalist id="cats"></datalist>
+
+<dialog id="supDialog">
+  <form method="dialog" id="supForm" class="grid">
+    <h2>Supplier</h2>
+    <label class="f"><span>Name</span><input type="text" name="name" required maxlength="60"></label>
+    <label class="chk"><input type="checkbox" name="prices_include_gst"> Receipt prices include GST</label>
+    <label class="chk"><input type="checkbox" name="active"> In use</label>
+    <div id="supErr" class="err" role="alert"></div>
+    <div class="row"><button class="btn primary" value="save">Save</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+const API = "https://viwdlolzckqnulapgsyu.supabase.co/functions/v1/cogs";
+const KEY = "rasa-insights-pw"; // shared with the Insights page
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const CATS = ["Meat", "Seafood", "Produce", "Dry goods", "Noodles and rice", "Sauces and condiments", "Dairy and eggs", "Frozen", "Drinks", "Packaging", "Other"];
+const KIND = { stock: "Food or packaging", other_cogs: "Other food cost (e.g. freight)", not_cogs: "Not food cost" };
+
+const pw = {
+  get() { try { return sessionStorage.getItem(KEY) || localStorage.getItem(KEY) || ""; } catch { return ""; } },
+  set(v, remember) { try { sessionStorage.setItem(KEY, v); if (remember) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch {} },
+  clear() { try { sessionStorage.removeItem(KEY); localStorage.removeItem(KEY); } catch {} },
+};
+
+async function call(body, password = pw.get()) {
+  let res;
+  try {
+    res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", "x-insights-password": password }, body: JSON.stringify(body) });
+  } catch { throw new Error("No connection. Check the internet and try again."); }
+  const data = await res.json().catch(() => ({ ok: false, reason: "No answer from the server." }));
+  if (res.status === 401) { const e = new Error(data.reason || "Wrong password."); e.auth = true; throw e; }
+  if (!data.ok) { const e = new Error(data.reason || "Something went wrong."); e.problems = data.problems; throw e; }
+  return data;
+}
+
+// ---------- formatting ----------
+const money = (c, sign = false) => c == null ? "-" : (c < 0 ? "-" : sign && c > 0 ? "+" : "") + "$" + (Math.abs(c) / 100).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const unitCost = (d, unit) => d == null ? "-" : "$" + Number(d).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: d < 1 ? 3 : 2 }) + "/" + unit;
+const qtyFmt = (n) => Number(n).toLocaleString("en-AU", { maximumFractionDigits: 3 });
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dateFmt = (s) => { if (!s) return "no date"; const d = new Date(s + "T00:00:00Z"); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const toCents = (v) => { const n = Number(String(v ?? "").replace(/[$,\s]/g, "")); return String(v ?? "").trim() === "" || !Number.isFinite(n) ? null : Math.round(n * 100); };
+const toDollars = (c) => c == null ? "" : (c / 100).toFixed(2);
+const pct = (n) => (n > 0 ? "+" : "") + Math.round(n * 100) + "%";
+const split = (amount, gst, incl) => { const a = amount || 0; if (!gst) return { ex: a, gst: 0 }; if (incl) { const ex = Math.round(a / 1.1); return { ex, gst: a - ex }; } return { ex: a, gst: Math.round(a * 0.1) }; };
+
+let boot = { suppliers: [], ingredients: [], receipts: [], ai: false };
+let cur = null, curImages = [], dirty = false;
+
+function setStatus(t, isErr = false) { const s = $("#status"); s.textContent = t || ""; s.className = "small " + (isErr ? "err" : "muted"); }
+function handleErr(err) { if (err.auth) return signOut(err.message); setStatus(err.message, true); }
+
+async function loadBoot() {
+  boot = await call({ view: "bootstrap" });
+  $("#aiState").textContent = boot.ai ? "Read by Claude" : "AI reading is off: enter lines by hand";
+  $("#cats").innerHTML = [...new Set([...CATS, ...boot.ingredients.map((i) => i.category)])].map((c) => `<option value="${esc(c)}">`).join("");
+  renderList(); renderIngredients(); renderSuppliers();
+}
+
+// ---------- tabs ----------
+function show(tab) {
+  ["receipts", "receipt", "ingredients", "suppliers"].forEach((id) => $("#" + id).hidden = id !== tab);
+  $$("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === tab || (tab === "receipt" && b.dataset.tab === "receipts"))));
+  scrollTo(0, 0);
+}
+$$("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+  if (cur && dirty && !confirm("Leave this receipt without saving your changes?")) return;
+  cur = null; dirty = false; show(b.dataset.tab);
+}));
+
+// ---------- receipt list ----------
+function renderList() {
+  const rs = boot.receipts;
+  const drafts = rs.filter((r) => r.status === "draft").length;
+  $("#recCount").textContent = rs.length ? `${drafts} to check · ${rs.length - drafts} confirmed` : "";
+  $("#recList").innerHTML = rs.length ? rs.map((r) => `
+    <button class="item" data-open="${r.id}">
+      <span class="t">${esc(r.supplier || "Supplier not set")} <span class="s">· ${esc(dateFmt(r.receipt_date))}</span></span>
+      <span class="r"><b>${money(r.total_cents)}</b></span>
+      <span class="s">${r.status === "draft" ? `<span class="tag ${r.extract_error ? "bad" : "warn"}">${r.extract_error ? "Not read" : "To check"}</span> ` : `<span class="tag good">Confirmed</span> `}${r.lines} ${r.lines === 1 ? "line" : "lines"}${r.reference ? " · #" + esc(r.reference) : ""}</span>
+      <span class="r s">food ${money(r.food_cost_cents)} ex GST</span>
+    </button>`).join("") : `<p class="muted">No receipts yet. Add the first one above.</p>`;
+}
+$("#recList").addEventListener("click", (ev) => { const b = ev.target.closest("[data-open]"); if (b) openReceipt(Number(b.dataset.open)); });
+
+// ---------- upload ----------
+const readAsDataURL = (f) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error("Couldn't read that file.")); r.readAsDataURL(f); });
+async function loadImage(file) {
+  if (window.createImageBitmap) { try { return await createImageBitmap(file, { imageOrientation: "from-image" }); } catch {} }
+  const url = URL.createObjectURL(file);
+  try { const img = new Image(); img.src = url; await img.decode(); return img; } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+}
+// Long receipts are cut into overlapping pieces so the text stays readable for Claude
+// (it shrinks any image to about 1.15 megapixels).
+function jpeg(canvas) { return canvas.toDataURL("image/jpeg", 0.85).split(",")[1]; }
+async function imageParts(file, slots) {
+  const img = await loadImage(file);
+  const w = img.width, h = img.height;
+  if (h / w <= 1.6) {
+    const k = Math.min(1, 1568 / Math.max(w, h));
+    const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return [jpeg(c)];
+  }
+  const k = Math.min(1, 1000 / w), sw = Math.round(w * k), sh = Math.round(h * k), overlap = 110;
+  let tile = 1150, n = Math.ceil((sh - overlap) / (tile - overlap));
+  if (n > slots) { n = Math.max(1, slots); tile = Math.ceil((sh + overlap * (n - 1)) / n); }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const y = Math.min(i * (tile - overlap), Math.max(0, sh - tile)), th = Math.min(tile, sh);
+    const c = document.createElement("canvas"); c.width = sw; c.height = th;
+    c.getContext("2d").drawImage(img, 0, y / k, w, th / k, 0, 0, sw, th);
+    out.push(jpeg(c));
+  }
+  return out;
+}
+async function filesToParts(files) {
+  const list = [...files];
+  if (list.some((f) => f.type === "application/pdf")) {
+    if (list.length > 1) throw new Error("Upload a PDF on its own.");
+    if (list[0].size > 8.5 * 1024 * 1024) throw new Error("That PDF is too big (8 MB at most).");
+    return [{ type: "application/pdf", data: (await readAsDataURL(list[0])).split(",")[1] }];
+  }
+  if (list.length > 8) throw new Error("Up to 8 photos per receipt.");
+  const parts = [];
+  for (const [i, f] of list.entries()) {
+    const slots = 8 - parts.length - (list.length - i - 1);
+    for (const d of await imageParts(f, slots)) parts.push({ type: "image/jpeg", data: d });
+  }
+  return parts.slice(0, 8);
+}
+$("#file").addEventListener("change", async (ev) => {
+  const files = ev.target.files; if (!files?.length) return;
+  const st = $("#uploadState"); st.hidden = false;
+  st.innerHTML = `<div class="progress"><span class="spin"></span><span>Preparing the photo…</span></div>`;
+  try {
+    const parts = await filesToParts(files);
+    st.innerHTML = `<div class="progress"><span class="spin"></span><span>${boot.ai ? "Uploading and reading the receipt. This takes about 10 to 30 seconds." : "Uploading…"}</span></div>`;
+    const data = await call({ view: "upload", parts });
+    st.hidden = true; ev.target.value = "";
+    await loadBoot().catch(() => {});
+    openReceiptData(data);
+  } catch (err) {
+    ev.target.value = "";
+    if (err.auth) return signOut(err.message);
+    st.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+  }
+});
+$("#byHand").addEventListener("click", async () => {
+  try { const data = await call({ view: "new" }); await loadBoot(); openReceiptData(data); } catch (err) { handleErr(err); }
+});
+
+// ---------- one receipt ----------
+async function openReceipt(id) {
+  setStatus("Loading…");
+  try { const data = await call({ view: "receipt", id }); setStatus(""); openReceiptData(data); } catch (err) { handleErr(err); }
+}
+function openReceiptData(data) {
+  cur = structuredClone(data.receipt); curImages = data.images || []; dirty = false;
+  show("receipt"); renderPhotos(); renderForm();
+}
+function renderPhotos() {
+  const el = $("#photos");
+  if (!curImages.length) { el.innerHTML = `<p class="small muted">No photo (entered by hand).</p>`; return; }
+  el.innerHTML = cur.image_type === "application/pdf"
+    ? `<a class="pdf" href="${esc(curImages[0])}" target="_blank" rel="noopener">Open the PDF</a><p class="small muted">Links last 10 minutes; reopen the receipt for a fresh one.</p>`
+    : curImages.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Receipt photo ${i + 1}" loading="lazy"></a>`).join("") + `<p class="small muted">Tap a photo to open it full size.</p>`;
+}
+
+const ingById = () => new Map(boot.ingredients.map((i) => [Number(i.id), i]));
+function ingOptions(selected) {
+  const byCat = new Map();
+  for (const i of boot.ingredients) {
+    if (!i.active && Number(i.id) !== Number(selected)) continue;
+    if (!byCat.has(i.category)) byCat.set(i.category, []);
+    byCat.get(i.category).push(i);
+  }
+  let html = `<option value="">Choose an ingredient</option><option value="new">+ New ingredient…</option>`;
+  for (const [cat, list] of [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    html += `<optgroup label="${esc(cat)}">${list.map((i) => `<option value="${i.id}" ${Number(i.id) === Number(selected) ? "selected" : ""}>${esc(i.name)} (${esc(i.base_unit)})</option>`).join("")}</optgroup>`;
+  }
+  return html;
+}
+
+function lineHTML(l, i) {
+  const locked = cur.status !== "draft";
+  const ing = ingById().get(Number(l.ingredient_id));
+  const sug = l.ai?.new_ingredient;
+  const unit = ing?.base_unit || sug?.base_unit || "unit";
+  const s = split(l.amount_cents, l.gst, cur.prices_include_gst);
+  const base = (Number(l.qty) || 0) * (Number(l.pack_qty) || 0);
+  const per = l.kind === "stock" && base > 0 ? s.ex / 100 / base : null;
+  const needs = l.kind === "stock" && (!l.ingredient_id || !(Number(l.pack_qty) > 0) || !(Number(l.qty) > 0));
+  const unitsHint = ing?.units?.length ? `<span class="small muted">${ing.units.map((u) => `${esc(u.name)} = ${qtyFmt(u.base_qty)} ${esc(unit)}`).join(" · ")}</span>` : "";
+  return `<div class="line ${needs ? "attn" : ""} ${l.kind === "not_cogs" ? "not" : ""}" data-i="${i}">
+    <div class="top">
+      <label class="f"><span>Line ${i + 1}${l.ai?.remembered ? ' <span class="tag good">remembered</span>' : ""}</span><input type="text" data-k="description" value="${esc(l.description)}" ${locked ? "disabled" : ""}></label>
+      ${locked ? "" : `<button class="btn small danger" data-del="${i}" aria-label="Remove line ${i + 1}">Remove</button>`}
+    </div>
+    <div class="grid g2">
+      <label class="f"><span>Type</span><select data-k="kind" ${locked ? "disabled" : ""}>${Object.entries(KIND).map(([k, v]) => `<option value="${k}" ${l.kind === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      ${l.kind === "stock" ? `<label class="f"><span>Ingredient</span><select data-k="ingredient_id" ${locked ? "disabled" : ""}>${ingOptions(l.ingredient_id)}</select></label>` : "<span></span>"}
+    </div>
+    ${l.kind === "stock" && !l.ingredient_id && sug && !locked ? `<div class="row small"><span class="muted">Suggested new ingredient:</span> <b>${esc(sug.name)}</b> (${esc(sug.base_unit)}, ${esc(sug.category)}) <button class="btn small" data-create="${i}">Create it</button></div>` : ""}
+    <div class="grid g4">
+      ${l.kind === "stock" ? `<label class="f"><span>Qty bought${l.ai?.unit ? ` (${esc(l.ai.unit)})` : ""}</span><input type="number" inputmode="decimal" step="any" min="0" data-k="qty" value="${esc(l.qty)}" ${locked ? "disabled" : ""}></label>
+      <label class="f"><span>Each holds (${esc(unit)})</span><input type="number" inputmode="decimal" step="any" min="0" data-k="pack_qty" value="${esc(l.pack_qty ?? "")}" ${locked ? "disabled" : ""}></label>` : ""}
+      <label class="f"><span>Amount as printed</span><input type="text" inputmode="decimal" data-k="amount" value="${toDollars(l.amount_cents)}" ${locked ? "disabled" : ""}></label>
+      <label class="chk"><input type="checkbox" data-k="gst" ${l.gst ? "checked" : ""} ${locked ? "disabled" : ""}> GST</label>
+    </div>
+    ${unitsHint}
+    <div class="calc">${money(s.ex)} ex GST${s.gst ? ` + ${money(s.gst)} GST` : ""}${l.kind === "stock" ? (base > 0 ? ` · ${qtyFmt(base)} ${esc(unit)} · <b>${unitCost(per, unit)}</b>` : " · enter qty and pack size") : ""}</div>
+  </div>`;
+}
+
+function checks() {
+  const incl = cur.prices_include_gst;
+  let printed = 0, taxable = 0, ex = 0, food = 0;
+  for (const l of cur.lines) {
+    const s = split(l.amount_cents, l.gst, incl);
+    printed += incl ? (l.amount_cents || 0) : (l.amount_cents || 0) + s.gst;
+    if (l.gst) taxable += l.amount_cents || 0;
+    ex += s.ex; if (l.kind !== "not_cogs") food += s.ex;
+  }
+  const gstCalc = incl ? Math.round(taxable / 11) : Math.round(taxable * 0.1);
+  const tol = Math.max(5, cur.lines.length);
+  return { printed, gstCalc, ex, food, totalOk: cur.total_cents == null || Math.abs(printed - cur.total_cents) <= tol, gstOk: cur.gst_cents == null || Math.abs(gstCalc - cur.gst_cents) <= 3 };
+}
+
+function renderSummary() {
+  const c = checks();
+  $("#summary").innerHTML = `
+    <span>Lines add up to</span><b>${money(c.printed)} ${cur.total_cents == null ? "" : c.totalOk ? '<span class="tag good">matches total</span>' : `<span class="tag bad">total is ${money(cur.total_cents)}</span>`}</b>
+    <span>GST on lines</span><b>${money(c.gstCalc)} ${cur.gst_cents == null ? "" : c.gstOk ? '<span class="tag good">matches</span>' : `<span class="tag bad">receipt shows ${money(cur.gst_cents)}</span>`}</b>
+    <span>Food cost (ex GST)</span><b>${money(c.food)}</b>
+    <span>Not food cost (ex GST)</span><b>${money(c.ex - c.food)}</b>`;
+}
+
+function renderForm() {
+  const r = cur, locked = r.status !== "draft";
+  const sups = boot.suppliers.filter((s) => s.active || Number(s.id) === Number(r.supplier_id));
+  const blocks = (r.problems || []).filter((p) => p.level === "block"), warns = (r.problems || []).filter((p) => p.level === "warn");
+  $("#recState").innerHTML = locked ? `<span class="tag good">Confirmed</span>` : `<span class="tag warn">Draft: check and confirm</span>`;
+  const usage = r.ai_usage ? ` (${esc(r.ai_usage.model)}, ${Number(r.ai_usage.input_tokens).toLocaleString("en-AU")} + ${Number(r.ai_usage.output_tokens).toLocaleString("en-AU")} tokens)` : "";
+  $("#form").innerHTML = `
+    ${r.extract_error ? `<div class="notice bad">${esc(r.extract_error)}</div>` : ""}
+    ${r.ai_notes && !locked ? `<div class="notice neutral"><b>Claude's note:</b> ${esc(r.ai_notes)}</div>` : ""}
+    ${!locked && r.extracted_at ? `<p class="small muted">Read by Claude${usage}. Check each line against the photo.</p>` : ""}
+    <section class="card">
+      <div class="grid g2">
+        <label class="f"><span>Supplier${r.supplier_text && !r.supplier_id ? ` (receipt says "${esc(r.supplier_text)}")` : ""}</span><select id="fSupplier" ${locked ? "disabled" : ""}><option value="">Choose</option>${sups.map((s) => `<option value="${s.id}" ${Number(s.id) === Number(r.supplier_id) ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select></label>
+        <label class="f"><span>Date</span><input type="date" id="fDate" value="${esc(r.receipt_date || "")}" ${locked ? "disabled" : ""}></label>
+        <label class="f"><span>Receipt or invoice number</span><input type="text" id="fRef" value="${esc(r.reference || "")}" ${locked ? "disabled" : ""}></label>
+        <label class="chk"><input type="checkbox" id="fIncl" ${r.prices_include_gst ? "checked" : ""} ${locked ? "disabled" : ""}> Prices include GST</label>
+        <label class="f"><span>Total paid (incl GST)</span><input type="text" inputmode="decimal" id="fTotal" value="${toDollars(r.total_cents)}" ${locked ? "disabled" : ""}></label>
+        <label class="f"><span>GST shown on receipt</span><input type="text" inputmode="decimal" id="fGst" value="${toDollars(r.gst_cents)}" ${locked ? "disabled" : ""}></label>
+      </div>
+    </section>
+    <div class="grid" id="lines">${r.lines.map(lineHTML).join("")}</div>
+    ${locked ? "" : `<button class="btn" id="addLine">Add a line</button>`}
+    <section class="card"><div class="sum" id="summary"></div></section>
+    ${blocks.length ? `<div class="notice bad"><b>Before confirming:</b><ul>${blocks.map((p) => `<li>${esc(p.text)}</li>`).join("")}</ul></div>` : ""}
+    ${warns.length ? `<div class="notice warn"><ul>${warns.map((p) => `<li>${esc(p.text)}</li>`).join("")}</ul></div>` : ""}
+    <label class="f"><span>Notes</span><textarea id="fNotes" ${locked ? "disabled" : ""}>${esc(r.notes || "")}</textarea></label>
+    <div id="formMsg" role="status"></div>
+    <div class="sticky-actions">
+      ${locked
+        ? `<button class="btn" id="reopen">Reopen to change</button>`
+        : `<button class="btn primary" id="confirmBtn">Confirm</button><button class="btn" id="saveBtn">Save draft</button>
+           ${r.image_paths?.length && boot.ai ? `<button class="btn" id="reread">Read again (stronger model)</button>` : ""}
+           <button class="btn danger" id="delBtn">Delete</button>`}
+    </div>`;
+  renderSummary();
+}
+
+function readHeader() {
+  cur.supplier_id = $("#fSupplier").value ? Number($("#fSupplier").value) : null;
+  cur.receipt_date = $("#fDate").value || null;
+  cur.reference = $("#fRef").value;
+  cur.prices_include_gst = $("#fIncl").checked;
+  cur.total_cents = toCents($("#fTotal").value);
+  cur.gst_cents = toCents($("#fGst").value);
+  cur.notes = $("#fNotes").value;
+}
+function rerenderLine(i) {
+  const old = $(`.line[data-i="${i}"]`);
+  const t = document.createElement("div"); t.innerHTML = lineHTML(cur.lines[i], i);
+  old.replaceWith(t.firstElementChild);
+}
+
+$("#form").addEventListener("input", (ev) => {
+  if (!cur || cur.status !== "draft") return;
+  dirty = true;
+  const card = ev.target.closest(".line");
+  if (!card) { readHeader(); renderSummary(); return; }
+  const i = Number(card.dataset.i), l = cur.lines[i], k = ev.target.dataset.k;
+  if (k === "description") l.description = ev.target.value;
+  if (k === "qty") l.qty = ev.target.value === "" ? null : Number(ev.target.value);
+  if (k === "pack_qty") l.pack_qty = ev.target.value === "" ? null : Number(ev.target.value);
+  if (k === "amount") l.amount_cents = toCents(ev.target.value) ?? 0;
+  if (k === "qty" || k === "pack_qty" || k === "amount") {
+    const t = document.createElement("div"); t.innerHTML = lineHTML(l, i);
+    card.querySelector(".calc").innerHTML = t.querySelector(".calc").innerHTML;
+    card.classList.toggle("attn", t.firstElementChild.classList.contains("attn"));
+  }
+  renderSummary();
+});
+$("#form").addEventListener("change", async (ev) => {
+  if (!cur || cur.status !== "draft") return;
+  const card = ev.target.closest(".line");
+  if (!card) { readHeader(); if (ev.target.id === "fIncl") { $("#lines").innerHTML = cur.lines.map(lineHTML).join(""); } renderSummary(); return; }
+  const i = Number(card.dataset.i), l = cur.lines[i], k = ev.target.dataset.k;
+  dirty = true;
+  if (k === "kind") { l.kind = ev.target.value; if (l.kind === "not_cogs") l.ingredient_id = null; }
+  if (k === "gst") l.gst = ev.target.checked;
+  if (k === "ingredient_id") {
+    if (ev.target.value === "new") {
+      const id = await editIngredient(null, { name: l.ai?.new_ingredient?.name || "", base_unit: l.ai?.new_ingredient?.base_unit || "kg", category: l.ai?.new_ingredient?.category || "" });
+      if (id) l.ingredient_id = id;
+    } else l.ingredient_id = ev.target.value ? Number(ev.target.value) : null;
+    const ing = ingById().get(Number(l.ingredient_id));
+    if (ing && (l.pack_qty == null || l.pack_qty === "")) l.pack_qty = 1;
+  }
+  rerenderLine(i); renderSummary();
+});
+$("#form").addEventListener("click", async (ev) => {
+  const t = ev.target.closest("button"); if (!t || !cur) return;
+  if (t.dataset.del != null) { cur.lines.splice(Number(t.dataset.del), 1); dirty = true; $("#lines").innerHTML = cur.lines.map(lineHTML).join(""); renderSummary(); return; }
+  if (t.dataset.create != null) {
+    const l = cur.lines[Number(t.dataset.create)], s = l.ai.new_ingredient;
+    const id = await editIngredient(null, { name: s.name, base_unit: s.base_unit, category: s.category, gst_free: s.gst_free ?? !l.gst });
+    if (id) { l.ingredient_id = id; if (l.pack_qty == null) l.pack_qty = 1; dirty = true; rerenderLine(Number(t.dataset.create)); renderSummary(); }
+    return;
+  }
+  if (t.id === "addLine") { cur.lines.push({ description: "", kind: "stock", qty: 1, pack_qty: null, amount_cents: 0, gst: false }); dirty = true; $("#lines").insertAdjacentHTML("beforeend", lineHTML(cur.lines.at(-1), cur.lines.length - 1)); $(".line:last-child input", $("#lines"))?.focus(); return; }
+  if (t.id === "saveBtn") return save(false);
+  if (t.id === "confirmBtn") return save(true);
+  if (t.id === "reopen") return act("reopen", "Reopened. Change it, then confirm again.");
+  if (t.id === "delBtn") { if (confirm("Delete this draft receipt and its photo?")) return act("delete"); return; }
+  if (t.id === "reread") {
+    if (dirty && !confirm("Read the photo again? Your changes to the lines will be replaced.")) return;
+    msg(`<div class="progress"><span class="spin"></span><span>Reading again with the stronger model…</span></div>`);
+    $$("#form button").forEach((b) => b.disabled = true);
+    try { const data = await call({ view: "extract", id: cur.id, better: true }); openReceiptData(data); } catch (err) { if (err.auth) return signOut(err.message); renderForm(); msg(`<p class="err">${esc(err.message)}</p>`); }
+  }
+});
+function msg(html) { const m = $("#formMsg"); if (m) m.innerHTML = html; }
+
+function payload() {
+  return {
+    id: cur.id, supplier_id: cur.supplier_id, receipt_date: cur.receipt_date, reference: cur.reference,
+    prices_include_gst: cur.prices_include_gst, total_cents: cur.total_cents, gst_cents: cur.gst_cents, notes: cur.notes,
+    lines: cur.lines.map((l) => ({ description: l.description, kind: l.kind, ingredient_id: l.ingredient_id || null, qty: l.qty ?? 1, pack_qty: l.pack_qty ?? null, amount_cents: l.amount_cents || 0, gst: !!l.gst, ai: l.ai ?? null })),
+  };
+}
+async function save(andConfirm) {
+  readHeader();
+  $$("#form .sticky-actions button").forEach((b) => b.disabled = true);
+  msg(`<div class="progress"><span class="spin"></span><span>Saving…</span></div>`);
+  try {
+    const s = await call({ view: "save", receipt: payload() });
+    cur = structuredClone(s.receipt); dirty = false;
+    if (andConfirm) {
+      try {
+        const c = await call({ view: "confirm", id: cur.id });
+        cur = structuredClone(c.receipt);
+        await loadBoot(); renderForm();
+        msg(`<div class="notice good">Confirmed. Its costs now count, and its lines will be filled in automatically next time.</div>`);
+        return;
+      } catch (err) {
+        if (err.auth) return signOut(err.message);
+        renderForm(); msg(`<div class="notice bad">${esc(err.message)}</div>`); return;
+      }
+    }
+    await loadBoot(); renderForm(); msg(`<div class="notice good">Saved.</div>`);
+  } catch (err) { if (err.auth) return signOut(err.message); renderForm(); msg(`<p class="err">${esc(err.message)}</p>`); }
+}
+async function act(view, done) {
+  try {
+    const r = await call({ view, id: cur.id });
+    await loadBoot();
+    if (view === "delete") { cur = null; dirty = false; show("receipts"); setStatus("Draft deleted."); return; }
+    cur = structuredClone(r.receipt); dirty = false; renderForm(); if (done) msg(`<div class="notice good">${esc(done)}</div>`);
+  } catch (err) { if (err.auth) return signOut(err.message); msg(`<p class="err">${esc(err.message)}</p>`); }
+}
+$("#back").addEventListener("click", () => {
+  if (dirty && !confirm("Leave this receipt without saving your changes?")) return;
+  cur = null; dirty = false; show("receipts");
+});
+addEventListener("beforeunload", (ev) => { if (cur && dirty) { ev.preventDefault(); ev.returnValue = ""; } });
+
+// ---------- ingredients ----------
+function renderIngredients() {
+  const q = ($("#ingSearch").value || "").trim().toLowerCase();
+  const list = boot.ingredients.filter((i) => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+  const alerts = boot.ingredients.filter((i) => i.price?.alert);
+  $("#ingAlerts").innerHTML = alerts.length ? `<div class="notice bad"><b>Price rises:</b> ${alerts.map((i) => `${esc(i.name)} ${pct(i.price.change)} to ${unitCost(i.price.latest_cost, i.base_unit)}`).join(", ")}.</div>` : "";
+  let html = "", lastCat = null;
+  for (const i of list) {
+    if (i.category !== lastCat) { html += `<div class="cat">${esc(i.category)}</div>`; lastCat = i.category; }
+    const p = i.price;
+    html += `<button class="item" data-ing="${i.id}">
+      <span class="t">${esc(i.name)}${i.active ? "" : ' <span class="tag neutral">not in use</span>'}</span>
+      <span class="r"><b>${p ? unitCost(p.latest_cost, i.base_unit) : "-"}</b></span>
+      <span class="s">${i.counted ? "Counted" : "Costed when bought"} · ${i.gst_free ? "GST-free" : "GST"}${i.units.length ? " · " + i.units.map((u) => esc(u.name)).join(", ") : ""}</span>
+      <span class="r s">${p ? `${p.change != null ? `<span class="tag ${p.alert ? "bad" : p.change < -0.05 ? "good" : "neutral"}">${pct(p.change)}</span> ` : ""}${esc(dateFmt(p.latest_date).replace(/^\w+ /, ""))}` : "no purchases yet"}</span>
+    </button>`;
+  }
+  $("#ingList").innerHTML = html || `<p class="muted">${q ? "No match." : "No ingredients yet. They're easiest to add from a receipt: Claude suggests them."}</p>`;
+}
+$("#ingSearch").addEventListener("input", renderIngredients);
+$("#ingList").addEventListener("click", (ev) => { const b = ev.target.closest("[data-ing]"); if (b) editIngredient(Number(b.dataset.ing)); });
+$("#newIng").addEventListener("click", () => editIngredient(null));
+
+function unitRow(u = { name: "", base_qty: "" }) {
+  return `<div class="grid g3 unit"><input type="text" placeholder="e.g. 5kg bag" value="${esc(u.name)}" aria-label="Unit name"><input type="number" inputmode="decimal" step="any" min="0" placeholder="holds" value="${esc(u.base_qty)}" aria-label="Base units in it"><button type="button" class="btn small danger" data-rmunit>Remove</button></div>`;
+}
+$("#addUnit").addEventListener("click", () => $("#units").insertAdjacentHTML("beforeend", unitRow()));
+$("#units").addEventListener("click", (ev) => { if (ev.target.closest("[data-rmunit]")) ev.target.closest(".unit").remove(); });
+
+// Opens the ingredient form. Resolves to the saved ingredient's id, or null if cancelled.
+function editIngredient(id, preset = {}) {
+  return new Promise((resolve) => {
+    const d = $("#ingDialog"), f = $("#ingForm");
+    const i = id ? boot.ingredients.find((x) => Number(x.id) === id) : { name: "", category: "", base_unit: "kg", counted: true, gst_free: true, active: true, notes: "", units: [], ...preset };
+    $("#ingTitle").textContent = id ? i.name : "New ingredient";
+    f.name.value = i.name; f.category.value = i.category === "Other" && !id ? "" : i.category; f.base_unit.value = i.base_unit;
+    f.counted.checked = !!i.counted; f.gst_free.checked = !!i.gst_free; f.active.checked = i.active !== false; f.notes.value = i.notes || "";
+    $("#units").innerHTML = (i.units || []).map(unitRow).join("");
+    $("#ingErr").textContent = ""; $("#ingHist").innerHTML = "";
+    if (id) {
+      $("#ingHist").innerHTML = `<p class="small muted">Loading price history…</p>`;
+      call({ view: "history", ingredient_id: id }).then((h) => {
+        $("#ingHist").innerHTML = h.history.length ? `<details open><summary class="small"><b>Price history</b> (ex GST)</summary><div class="tablewrap"><table><thead><tr><th>Date</th><th>Supplier</th><th class="r">Bought</th><th class="r">Cost</th><th class="r">Per ${esc(i.base_unit)}</th></tr></thead><tbody>${h.history.map((p) => `<tr><td>${esc(dateFmt(p.date).replace(/^\w+ /, ""))}</td><td>${esc(p.supplier || "")}</td><td class="r">${qtyFmt(p.base_qty)} ${esc(i.base_unit)}</td><td class="r">${money(p.ex_gst_cents)}</td><td class="r">${unitCost(p.unit_cost, i.base_unit)}</td></tr>`).join("")}</tbody></table></div></details>` : `<p class="small muted">No confirmed purchases yet.</p>`;
+      }).catch(() => $("#ingHist").innerHTML = "");
+    }
+    const onSave = async (ev) => {
+      ev.preventDefault();
+      const ing = {
+        id: id || null, name: f.name.value, category: f.category.value || "Other", base_unit: f.base_unit.value,
+        counted: f.counted.checked, gst_free: f.gst_free.checked, active: f.active.checked, notes: f.notes.value,
+        units: $$(".unit", $("#units")).map((r) => ({ name: $$("input", r)[0].value, base_qty: Number($$("input", r)[1].value) })).filter((u) => u.name.trim() && u.base_qty > 0),
+      };
+      $("#ingErr").textContent = "Saving…";
+      try {
+        const r = await call({ view: "ingredient", ingredient: ing });
+        await loadBoot(); cleanup(); d.close(); resolve(Number(r.id));
+        if (cur) { $("#lines").innerHTML = cur.lines.map(lineHTML).join(""); renderSummary(); }
+      } catch (err) { if (err.auth) { cleanup(); d.close(); resolve(null); return signOut(err.message); } $("#ingErr").textContent = err.message; }
+    };
+    const onClose = () => { cleanup(); resolve(null); };
+    const cleanup = () => { $("#ingSave").removeEventListener("click", onSave); d.removeEventListener("close", onClose); };
+    $("#ingSave").addEventListener("click", onSave);
+    d.addEventListener("close", onClose);
+    d.showModal(); f.name.focus();
+  });
+}
+
+// ---------- suppliers ----------
+function renderSuppliers() {
+  $("#supList").innerHTML = boot.suppliers.map((s) => `<button class="item" data-sup="${s.id}"><span class="t">${esc(s.name)}${s.active ? "" : ' <span class="tag neutral">not in use</span>'}</span><span class="r s">${s.prices_include_gst ? "prices incl GST" : "prices ex GST"}</span></button>`).join("");
+}
+$("#supList").addEventListener("click", (ev) => { const b = ev.target.closest("[data-sup]"); if (b) editSupplier(Number(b.dataset.sup)); });
+$("#newSup").addEventListener("click", () => editSupplier(null));
+function editSupplier(id) {
+  const d = $("#supDialog"), f = $("#supForm");
+  const s = id ? boot.suppliers.find((x) => Number(x.id) === id) : { name: "", prices_include_gst: true, active: true };
+  f.name.value = s.name; f.prices_include_gst.checked = !!s.prices_include_gst; f.active.checked = s.active !== false; $("#supErr").textContent = "";
+  f.onsubmit = async (ev) => {
+    if (ev.submitter?.value !== "save") return;
+    ev.preventDefault();
+    try { await call({ view: "supplier", supplier: { id, name: f.name.value, prices_include_gst: f.prices_include_gst.checked, active: f.active.checked } }); await loadBoot(); d.close(); }
+    catch (err) { if (err.auth) { d.close(); return signOut(err.message); } $("#supErr").textContent = err.message; }
+  };
+  d.showModal();
+}
+
+// ---------- sign in ----------
+function signOut(m = "") { pw.clear(); $("#app").hidden = true; $("#signin").hidden = false; $("#signinErr").textContent = m; $("#pw").focus(); }
+$("#signinForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const v = $("#pw").value; $("#signinErr").textContent = "Checking…";
+  try { await call({ view: "bootstrap" }, v); pw.set(v, $("#remember").checked); $("#signinErr").textContent = ""; start(); }
+  catch (err) { $("#signinErr").textContent = err.message; }
+});
+async function start() {
+  $("#signin").hidden = true; $("#app").hidden = false; show("receipts"); setStatus("Loading…");
+  try { await loadBoot(); setStatus(""); } catch (err) { handleErr(err); }
+}
+if (pw.get()) start(); else $("#signin").hidden = false;
+</script>
+</body>
+</html>
