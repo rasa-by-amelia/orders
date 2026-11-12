@@ -605,16 +605,18 @@ async function loadSetup() {
       : `<p><span class="dot no"></span>Not connected. In Meta Business Settings for "rasabyamelia": create a system user with <b>View performance</b> on the ad account ${esc(m.account.replace("act_", ""))}, generate a token with only <b>ads_read</b> and no expiry, and save it in Supabase (Edge Functions, Secrets) as <code>META_ACCESS_TOKEN</code>. Data appears within 10 minutes.</p>`;
     const e = s.email;
     $("#setupEmail").innerHTML = `
-      <p>${e.resend_key_set && e.recipients ? `<span class="dot ${e.error ? "no" : "ok"}"></span>Sends at 8am Perth to ${e.recipients_masked.map(esc).join(", ")}. Last sent ${when(e.last_sent_at)}.${e.error ? ` Last problem: ${esc(e.error)}` : ""}` : `<span class="dot no"></span>Not set up: needs <code>RESEND_API_KEY</code> and <code>DIGEST_EMAILS</code> in Supabase (Edge Functions, Secrets).`}</p>
-      <button class="btn primary" id="testEmail" ${e.resend_key_set && e.recipients ? "" : "disabled"}>Send yesterday's email now (test)</button> <span id="testEmailMsg" class="small"></span>`;
+      <p>${e.via === "gmail" && e.last_sent_at ? `<span class="dot ok"></span>Sent from Gmail. Last sent ${when(e.last_sent_at)}${e.about ? ` (about ${esc(short(e.about))})` : ""}.` : `<span class="dot no"></span>Not sent yet.`}</p>
+      <p class="small muted">A small Google Apps Script in RASA's Google account collects the email at 8am Perth time and sends it from Gmail. It can only send email; it doesn't read the inbox.</p>
+      <ol class="steps">
+        <li>Copy the script from <a href="https://github.com/rasa-by-amelia/rasa-phone-agent/blob/main/google-apps-script/rasa-insights-email.gs" target="_blank" rel="noopener">google-apps-script/rasa-insights-email.gs</a>.</li>
+        <li>At <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a>, signed in as the Gmail that should send it: <b>New project</b>, name it "RASA Insights email", paste it in.</li>
+        <li>Put the key in place of the PASTE line:
+          <div class="kv" style="margin-top:6px"><span>FEED_KEY</span><span><code class="box">${esc(e.feed_key)}</code> <button class="btn" data-copy="${esc(e.feed_key)}">Copy</button></span></div></li>
+        <li>Choose <b>sendTest</b>, click <b>Run</b> and approve Google's permission request. A "[Test]" email arrives.</li>
+        <li>Choose <b>setUp</b> and click <b>Run</b> once. It schedules the daily email for 8 to 9am Perth time.</li>
+      </ol>`;
     const q = s.square;
     $("#setupSquare").innerHTML = `<p><span class="dot ${q.last_ok && !q.error ? "ok" : "no"}"></span>${q.error ? "Problem: " + esc(q.error) : q.last_ok ? `Synced ${when(q.last_ok)}${q.caught_up ? ", up to date" : `, still loading history (up to ${esc(String(q.orders_cursor || "").slice(0, 10))})`}.` : "Waiting for the first sync (every 10 minutes)."}</p>`;
-    $("#testEmail")?.addEventListener("click", async (ev) => {
-      ev.target.disabled = true; $("#testEmailMsg").textContent = "Sending…";
-      try { const r = await call({ view: "test_email" }); $("#testEmailMsg").textContent = `Sent to ${r.sent_to}: "${r.subject}"`; }
-      catch (err) { $("#testEmailMsg").textContent = err.message; }
-      ev.target.disabled = false;
-    });
   } catch (err) {
     if (err.auth) return signOut(err.message);
     $("#setupGoogle").innerHTML = `<p class="err">${esc(err.message)}</p>`;
