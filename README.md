@@ -6,3 +6,10 @@ the AI phone agent, each checked against Square, and every call with its transcr
 The page holds no data. It asks for a password and loads everything from the
 `orders-dashboard` function in the private `rasa-phone-agent` project, which only
 answers with the right password (set as `DASHBOARD_PASSWORD` in Supabase).
+
+## RASA Insights (`insights/`)
+
+A second page at `/orders/insights/` for the owners: sales, customers, and Google and Meta
+ads, with daily insights. It also holds no data: it loads everything from the
+`insights-dashboard` function, which needs its own password (`INSIGHTS_PASSWORD`), separate
+from the staff password above.
