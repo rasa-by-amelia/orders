@@ -698,9 +698,9 @@ function renderIngredients() {
     const p = i.price;
     html += `<button class="item" data-ing="${i.id}">
       <span class="t">${esc(i.name)}${i.active ? "" : ' <span class="tag neutral">not in use</span>'}</span>
-      <span class="r"><b>${p ? unitCost(p.latest_cost, i.base_unit) : i.est_cost != null ? unitCost(i.est_cost, i.base_unit) : "-"}</b>${!p && i.est_cost != null ? ' <span class="tag warn">estimate</span>' : ""}</span>
+      <span class="r"><b>${p ? unitCost(p.avg_cost_90d ?? p.latest_cost, i.base_unit) : i.est_cost != null ? unitCost(i.est_cost, i.base_unit) : "-"}</b>${!p && i.est_cost != null ? ' <span class="tag warn">estimate</span>' : p ? ' <span class="small muted">90-day avg</span>' : ""}</span>
       <span class="s">${i.counted ? "Counted" : "Costed when bought"} · ${i.gst_free ? "GST-free" : "GST"}${i.units.length ? " · " + i.units.map((u) => esc(u.name)).join(", ") : ""}</span>
-      <span class="r s">${p ? `${p.change != null ? `<span class="tag ${p.alert ? "bad" : p.change < -0.05 ? "good" : "neutral"}">${pct(p.change)}</span> ` : ""}${esc(dateFmt(p.latest_date).replace(/^\w+ /, ""))}` : "no purchases yet"}</span>
+      <span class="r s">${p ? `${p.change != null ? `<span class="tag ${p.alert ? "bad" : p.change < -0.05 ? "good" : "neutral"}">${pct(p.change)}</span> ` : ""}latest ${unitCost(p.latest_cost, i.base_unit)}, ${esc(dateFmt(p.latest_date).replace(/^\w+ /, ""))}` : "no purchases yet"}</span>
     </button>`;
   }
   $("#ingList").innerHTML = html || `<p class="muted">${q ? "No match." : "No ingredients yet. They're easiest to add from a receipt: Claude suggests them."}</p>`;
@@ -779,7 +779,8 @@ function editSupplier(id) {
 // ---------- recipes ----------
 let recipes = [], squareItems = [], rec = null, recDirty = false;
 const LIQ = ["g", "kg", "ml", "L", "tsp", "tbsp", "cup"];
-const priceOf = (i) => i?.price?.latest_cost ?? (i?.est_cost != null ? Number(i.est_cost) : null);
+// Same rule as the server (cogs_ingredient_cost): 90-day average of confirmed receipts, else the starting estimate.
+const priceOf = (i) => i?.price?.avg_cost_90d ?? i?.price?.latest_cost ?? (i?.est_cost != null ? Number(i.est_cost) : null);
 const ingSrc = (i) => i?.price ? "receipt" : i?.est_cost != null ? "estimate" : null;
 function factor(base, unit, ing) {
   const u = String(unit || "").trim().toLowerCase();
