@@ -438,7 +438,7 @@ function render(data) {
   const spend = sum(cur.ads_days, (a) => a.spend), spendP = sum(prev.ads_days || [], (a) => a.spend);
   const aov = t.orders ? t.sales_cents / t.orders : 0, aovP = p.orders ? p.sales_cents / p.orders : null;
   const att = t.orders ? t.extra_orders / t.orders : 0, attP = p.orders ? p.extra_orders / p.orders : null;
-  const cpn = t.new_customers ? spend / t.new_customers : null, cpnP = p.new_customers && spendP ? spendP / p.new_customers : null;
+  const cpn = t.new_customers && spend > 0 ? spend / t.new_customers : null, cpnP = p.new_customers && spendP ? spendP / p.new_customers : null;
   const tiles = [
     ["Sales", fmtMoney(t.sales_cents), deltaText(t.sales_cents, p.sales_cents, true, (v) => fmtMoney(v))],
     ["Orders", fmtInt(t.orders), deltaText(t.orders, p.orders, true, fmtInt)],
@@ -447,7 +447,7 @@ function render(data) {
     ["New customers", fmtInt(t.new_customers), deltaText(t.new_customers, p.new_customers, true, fmtInt)],
     ["Returning customers", fmtInt(t.returning_customers), deltaText(t.returning_customers, p.returning_customers, true, fmtInt)],
     ["Ad spend", fmtDollars(spend), spend ? `${fmtPct(spend * 100 / Math.max(1, t.sales_cents), 1)} of sales · ${deltaText(spend, spendP, false, fmtDollars)}` : deltaText(spend, spendP, false, fmtDollars)],
-    ["Ad cost per new customer", cpn == null ? "-" : fmtDollars(cpn), cpn == null ? "needs ad spend and new customers" : deltaText(cpn, cpnP, false, fmtDollars)],
+    ["Ad cost per new customer", cpn == null ? "-" : fmtDollars(cpn), cpn == null ? (spend > 0 ? "no new customers in this range" : "no ad spend in this range") : deltaText(cpn, cpnP, false, fmtDollars)],
   ];
   $("#tiles").innerHTML = tiles.map(([k, v, d]) => `<div class="tile"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span><span class="d">${d}</span></div>`).join("");
 
