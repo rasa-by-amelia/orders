@@ -149,6 +149,8 @@ footer { font-size: .8rem; color: var(--muted); }
     <div class="tabs">
       <button class="btn" data-tab="receipts" aria-pressed="true">Receipts</button>
       <button class="btn" data-tab="ingredients" aria-pressed="false">Ingredients</button>
+      <button class="btn" data-tab="recipes" aria-pressed="false">Recipes</button>
+      <button class="btn" data-tab="menu" aria-pressed="false">Menu costs</button>
       <button class="btn" data-tab="suppliers" aria-pressed="false">Suppliers</button>
       <a class="btn" href="../">Insights</a>
     </div>
@@ -196,6 +198,43 @@ footer { font-size: .8rem; color: var(--muted); }
     <div class="list" id="ingList"></div>
   </div>
 
+  <!-- Recipes -->
+  <div id="recipes" class="wrap" hidden>
+    <section class="card">
+      <div class="row between"><h2>Recipes</h2><span class="row"><button class="btn primary" id="newDish">Add dish</button><button class="btn" id="newComp">Add component</button></span></div>
+      <p class="small muted"><b>Components</b> are cooked in batches and shared (rice, sauces, the fried chicken, rendang). <b>Dishes</b> are one serve of a Square item, built from components and ingredients, plus packaging. Tap <b>Made a batch</b> each time a component is cooked: it teaches the tool how many serves a batch really gives.</p>
+      <input type="search" id="recSearch" placeholder="Search recipes" aria-label="Search recipes">
+    </section>
+    <div id="recWarn"></div>
+    <section><h2>Dishes</h2><div class="list" id="dishList"></div></section>
+    <section><h2>Components</h2><div class="list" id="compList"></div></section>
+  </div>
+
+  <!-- One recipe -->
+  <div id="recipe" class="wrap" hidden>
+    <div class="row between"><button class="btn" id="recBack">Back to recipes</button><span id="recKind"></span></div>
+    <div class="grid" id="recForm"></div>
+  </div>
+
+  <!-- Menu costs -->
+  <div id="menu" class="wrap" hidden>
+    <section class="card">
+      <h2>Menu costs</h2>
+      <p class="small muted">Square sales in the range times each dish's recipe cost: the <b>expected</b> food cost. Prices are what customers actually paid, ex GST, after discounts (staff meals included). Real food cost from stocktakes comes in the next part.</p>
+      <div class="row" id="menuPresets">
+        <button class="btn" data-mp="fortnight">Last fortnight</button>
+        <button class="btn" data-mp="28" aria-pressed="true">Last 28 days</button>
+        <button class="btn" data-mp="90">Last 90 days</button>
+        <label class="row small">From <input type="date" id="mFrom" style="width:auto"></label>
+        <label class="row small">To <input type="date" id="mTo" style="width:auto"></label>
+        <button class="btn small" id="mGo">Show</button>
+      </div>
+    </section>
+    <div id="menuTiles" class="grid g4"></div>
+    <div id="menuWarn"></div>
+    <div id="menuTable"></div>
+  </div>
+
   <!-- Suppliers -->
   <div id="suppliers" class="wrap" hidden>
     <section class="card">
@@ -217,6 +256,8 @@ footer { font-size: .8rem; color: var(--muted); }
       <label class="f"><span>Category</span><input type="text" name="category" list="cats" placeholder="e.g. Meat"></label>
       <label class="f"><span>Base unit</span><select name="base_unit"><option value="kg">kg</option><option value="L">L (litres)</option><option value="each">each</option></select></label>
     </div>
+    <label class="f"><span id="estLabel">Starting cost per unit, ex GST (optional)</span><input type="text" inputmode="decimal" name="est_cost" placeholder="e.g. 17.00"></label>
+    <p class="small muted" style="margin-top:-8px">Used in recipe costs only until a confirmed receipt gives the real price.</p>
     <label class="chk"><input type="checkbox" name="counted"> Count it at the stocktake</label>
     <p class="small muted" style="margin-top:-8px">Untick for small items (spices, oil, garlic) that are simply costed when bought.</p>
     <label class="chk"><input type="checkbox" name="gst_free"> Usually GST-free (basic food)</label>
@@ -242,6 +283,19 @@ footer { font-size: .8rem; color: var(--muted); }
     <label class="chk"><input type="checkbox" name="active"> In use</label>
     <div id="supErr" class="err" role="alert"></div>
     <div class="row"><button class="btn primary" value="save">Save</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+
+<dialog id="batchDialog">
+  <form method="dialog" class="grid" id="batchForm">
+    <h2 id="batchTitle">Made a batch</h2>
+    <div class="grid g2">
+      <label class="f"><span>Date cooked</span><input type="date" name="made_on" required></label>
+      <label class="f"><span>How many batches</span><input type="number" name="batches" min="0.25" step="0.25" value="1" inputmode="decimal"></label>
+    </div>
+    <label class="f"><span>Note (optional)</span><input type="text" name="note" maxlength="120" placeholder="e.g. double batch, some burnt"></label>
+    <div id="batchErr" class="err" role="alert"></div>
+    <div class="row"><button class="btn primary" value="save">Log it</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
   </form>
 </dialog>
 
@@ -299,13 +353,16 @@ async function loadBoot() {
 
 // ---------- tabs ----------
 function show(tab) {
-  ["receipts", "receipt", "ingredients", "suppliers"].forEach((id) => $("#" + id).hidden = id !== tab);
-  $$("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === tab || (tab === "receipt" && b.dataset.tab === "receipts"))));
+  ["receipts", "receipt", "ingredients", "suppliers", "recipes", "recipe", "menu"].forEach((id) => $("#" + id).hidden = id !== tab);
+  const parent = { receipt: "receipts", recipe: "recipes" }[tab] || tab;
+  $$("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === parent)));
+  if (tab === "recipes") loadRecipes();
+  if (tab === "menu") loadMenu();
   scrollTo(0, 0);
 }
 $$("[data-tab]").forEach((b) => b.addEventListener("click", () => {
-  if (cur && dirty && !confirm("Leave this receipt without saving your changes?")) return;
-  cur = null; dirty = false; show(b.dataset.tab);
+  if ((cur && dirty) || recDirty) { if (!confirm("Leave without saving your changes?")) return; }
+  cur = null; dirty = false; recDirty = false; show(b.dataset.tab);
 }));
 
 // ---------- receipt list ----------
@@ -641,7 +698,7 @@ function renderIngredients() {
     const p = i.price;
     html += `<button class="item" data-ing="${i.id}">
       <span class="t">${esc(i.name)}${i.active ? "" : ' <span class="tag neutral">not in use</span>'}</span>
-      <span class="r"><b>${p ? unitCost(p.latest_cost, i.base_unit) : "-"}</b></span>
+      <span class="r"><b>${p ? unitCost(p.latest_cost, i.base_unit) : i.est_cost != null ? unitCost(i.est_cost, i.base_unit) : "-"}</b>${!p && i.est_cost != null ? ' <span class="tag warn">estimate</span>' : ""}</span>
       <span class="s">${i.counted ? "Counted" : "Costed when bought"} · ${i.gst_free ? "GST-free" : "GST"}${i.units.length ? " · " + i.units.map((u) => esc(u.name)).join(", ") : ""}</span>
       <span class="r s">${p ? `${p.change != null ? `<span class="tag ${p.alert ? "bad" : p.change < -0.05 ? "good" : "neutral"}">${pct(p.change)}</span> ` : ""}${esc(dateFmt(p.latest_date).replace(/^\w+ /, ""))}` : "no purchases yet"}</span>
     </button>`;
@@ -666,6 +723,9 @@ function editIngredient(id, preset = {}) {
     $("#ingTitle").textContent = id ? i.name : "New ingredient";
     f.name.value = i.name; f.category.value = i.category === "Other" && !id ? "" : i.category; f.base_unit.value = i.base_unit;
     f.counted.checked = !!i.counted; f.gst_free.checked = !!i.gst_free; f.active.checked = i.active !== false; f.notes.value = i.notes || "";
+    f.est_cost.value = i.est_cost != null ? Number(i.est_cost).toFixed(2) : "";
+    const setEstLabel = () => $("#estLabel").textContent = `Starting cost per ${f.base_unit.value}, ex GST (optional)`;
+    setEstLabel(); f.base_unit.onchange = setEstLabel;
     $("#units").innerHTML = (i.units || []).map(unitRow).join("");
     $("#ingErr").textContent = ""; $("#ingHist").innerHTML = "";
     if (id) {
@@ -678,6 +738,7 @@ function editIngredient(id, preset = {}) {
       ev.preventDefault();
       const ing = {
         id: id || null, name: f.name.value, category: f.category.value || "Other", base_unit: f.base_unit.value,
+        est_cost: f.est_cost.value.trim() === "" ? null : Number(f.est_cost.value.replace(/[$,\s]/g, "")),
         counted: f.counted.checked, gst_free: f.gst_free.checked, active: f.active.checked, notes: f.notes.value,
         units: $$(".unit", $("#units")).map((r) => ({ name: $$("input", r)[0].value, base_qty: Number($$("input", r)[1].value) })).filter((u) => u.name.trim() && u.base_qty > 0),
       };
@@ -714,6 +775,293 @@ function editSupplier(id) {
   };
   d.showModal();
 }
+
+// ---------- recipes ----------
+let recipes = [], squareItems = [], rec = null, recDirty = false;
+const LIQ = ["g", "kg", "ml", "L", "tsp", "tbsp", "cup"];
+const priceOf = (i) => i?.price?.latest_cost ?? (i?.est_cost != null ? Number(i.est_cost) : null);
+const ingSrc = (i) => i?.price ? "receipt" : i?.est_cost != null ? "estimate" : null;
+function factor(base, unit, ing) {
+  const u = String(unit || "").trim().toLowerCase();
+  const own = ing?.units?.find((x) => x.name.toLowerCase() === u);
+  if (own) return Number(own.base_qty);
+  if (u === String(base).toLowerCase()) return 1;
+  if (base === "kg" || base === "L") return { kg: 1, l: 1, g: 0.001, ml: 0.001, tsp: 0.005, tbsp: 0.015, cup: 0.25 }[u] ?? null;
+  if (["each", "pc", "pcs", "piece", "pieces", "serve", "serves", "portion"].includes(u)) return 1;
+  return null;
+}
+function unitsFor(line) {
+  if (line.component_id) {
+    const c = recipes.find((r) => r.id === Number(line.component_id));
+    const b = c?.yield_unit || "serve";
+    return b === "kg" ? ["kg", "g"] : b === "L" ? ["L", "ml"] : [b];
+  }
+  const i = ingById().get(Number(line.ingredient_id));
+  if (!i) return ["each"];
+  return [...new Set([i.base_unit, ...(i.base_unit === "each" ? [] : LIQ), ...i.units.map((u) => u.name)])];
+}
+// Mirrors the database's costing for a live preview; the saved figure comes from the server.
+function lineCost(line) {
+  if (line.component_id) {
+    const c = recipes.find((r) => r.id === Number(line.component_id));
+    if (!c) return { problem: "Component not found." };
+    const f = factor(c.yield_unit, line.unit, null);
+    if (f == null) return { problem: `${c.name} is measured in ${c.yield_unit}.` };
+    const q = (Number(line.qty) || 0) * f;
+    return { base: q, baseUnit: c.yield_unit, price: Number(c.unit_cost), cost: q * Number(c.unit_cost), src: c.estimated ? "estimate" : "recipe", missing: c.missing };
+  }
+  const i = ingById().get(Number(line.ingredient_id));
+  if (!i) return { problem: "Choose an ingredient." };
+  const f = factor(i.base_unit, line.unit, i);
+  if (f == null) return { problem: `Can't turn ${line.unit} into ${i.base_unit}. Add "${line.unit}" as a unit on ${i.name}.` };
+  const q = (Number(line.qty) || 0) * f, p = priceOf(i);
+  if (p == null) return { base: q, baseUnit: i.base_unit, problem: "No price yet: confirm a receipt or add a starting estimate." };
+  return { base: q, baseUnit: i.base_unit, price: p, cost: q * p, src: ingSrc(i) };
+}
+const perUnitLabel = (r) => r.kind === "dish" ? "serve" : r.yield_unit;
+const fmt$ = (d) => d == null || !isFinite(d) ? "-" : "$" + Number(d).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function loadRecipes() {
+  $("#dishList").innerHTML = `<p class="muted">Loading…</p>`; $("#compList").innerHTML = "";
+  try { const [d] = await Promise.all([call({ view: "recipes" }), loadBoot()]); recipes = d.recipes; squareItems = d.square_items; renderRecipes(); }
+  catch (err) { handleErr(err); }
+}
+function linkText(l) { return l.variation ? `${l.item} · ${l.variation}` : `${l.item} (every variation)`; }
+function renderRecipes() {
+  const q = ($("#recSearch").value || "").trim().toLowerCase();
+  const show = recipes.filter((r) => !q || r.name.toLowerCase().includes(q));
+  const tags = (r) => `${r.missing ? `<span class="tag bad">${r.missing} missing</span> ` : ""}${r.estimated ? '<span class="tag warn">estimates</span> ' : ""}${r.active ? "" : '<span class="tag neutral">not in use</span>'}`;
+  $("#dishList").innerHTML = show.filter((r) => r.kind === "dish").map((r) => `
+    <button class="item" data-rec="${r.id}">
+      <span class="t">${esc(r.name)}</span><span class="r"><b>${fmt$(r.unit_cost)}</b><span class="s">/serve</span></span>
+      <span class="s">${r.links.length ? esc(r.links.map(linkText).join(", ")) : '<span class="tag bad">not linked to Square</span>'}</span><span class="r s">${tags(r)}</span>
+    </button>`).join("") || `<p class="muted">No dishes yet.</p>`;
+  $("#compList").innerHTML = show.filter((r) => r.kind === "component").map((r) => {
+    const last = r.batches[0];
+    return `<div class="item" style="cursor:default">
+      <button class="t" data-rec="${r.id}" style="all:unset;cursor:pointer;font-weight:700;text-decoration:underline;text-decoration-color:var(--line)">${esc(r.name)}</button>
+      <span class="r"><b>${fmt$(r.unit_cost)}</b><span class="s">/${esc(r.yield_unit)}</span></span>
+      <span class="s">Makes ${qtyFmt(r.yield_qty)} ${esc(r.yield_unit)}${r.yield_estimate ? ' <span class="tag warn">guess</span>' : ""} · batch ${fmt$(r.batch_cost)} · ${last ? `last made ${esc(dateFmt(last.made_on).replace(/ \d{4}$/, ""))}` : "no batches logged"}</span>
+      <span class="r">${tags(r)} <button class="btn small" data-batch="${r.id}">Made a batch</button></span>
+    </div>`;
+  }).join("") || `<p class="muted">No components yet.</p>`;
+  const unlinked = squareItems.filter((s) => !s.recipe_id && s.kind !== "other" && Number(s.qty_90d) > 0);
+  $("#recWarn").innerHTML = unlinked.length ? `<div class="notice warn"><b>${unlinked.length} Square ${unlinked.length === 1 ? "item has" : "items have"} no dish yet</b> (sold in the last 90 days): ${esc(unlinked.slice(0, 8).map((s) => s.variation ? `${s.item} · ${s.variation}` : s.item).join(", "))}${unlinked.length > 8 ? "…" : ""}. Open <b>Menu costs</b> to link them.</div>` : "";
+}
+$("#recSearch").addEventListener("input", renderRecipes);
+$("#newDish").addEventListener("click", () => openRecipe({ kind: "dish" }));
+$("#newComp").addEventListener("click", () => openRecipe({ kind: "component" }));
+$("#recipes").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-batch]"); if (b) return logBatch(Number(b.dataset.batch));
+  const r = ev.target.closest("[data-rec]"); if (r) openRecipe(recipes.find((x) => x.id === Number(r.dataset.rec)));
+});
+
+function logBatch(id) {
+  const r = recipes.find((x) => x.id === id), d = $("#batchDialog"), f = $("#batchForm");
+  $("#batchTitle").textContent = `Made a batch: ${r.name}`;
+  f.made_on.value = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); f.batches.value = 1; f.note.value = ""; $("#batchErr").textContent = "";
+  f.onsubmit = async (ev) => {
+    if (ev.submitter?.value !== "save") return;
+    ev.preventDefault();
+    try { await call({ view: "batch", batch: { recipe_id: id, made_on: f.made_on.value, batches: f.batches.value, note: f.note.value } }); d.close(); setStatus(`Logged a batch of ${r.name}.`); await loadRecipes(); if (rec?.id === id) openRecipe(recipes.find((x) => x.id === id)); }
+    catch (err) { if (err.auth) { d.close(); return signOut(err.message); } $("#batchErr").textContent = err.message; }
+  };
+  d.showModal();
+}
+
+function openRecipe(r) {
+  rec = structuredClone(r.id ? r : { name: "", kind: r.kind, yield_qty: r.kind === "dish" ? 1 : 10, yield_unit: "serve", yield_estimate: r.kind === "component", active: true, items: [], links: r.links || [], method: "", notes: "", batches: [], used_in: [], ...r });
+  recDirty = false; show("recipe"); renderRecipeForm();
+}
+function itemOptions(line) {
+  const sel = line.component_id ? `c:${line.component_id}` : line.ingredient_id ? `i:${line.ingredient_id}` : "";
+  let html = `<option value="">Choose</option><option value="new">+ New ingredient…</option>`;
+  const comps = recipes.filter((c) => c.kind === "component" && c.id !== rec.id);
+  if (comps.length) html += `<optgroup label="Components">${comps.map((c) => `<option value="c:${c.id}" ${sel === "c:" + c.id ? "selected" : ""}>${esc(c.name)} (${esc(c.yield_unit)})</option>`).join("")}</optgroup>`;
+  const byCat = new Map();
+  for (const i of boot.ingredients) { if (!i.active && sel !== "i:" + i.id) continue; if (!byCat.has(i.category)) byCat.set(i.category, []); byCat.get(i.category).push(i); }
+  for (const [cat, list] of [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    html += `<optgroup label="${esc(cat)}">${list.map((i) => `<option value="i:${i.id}" ${sel === "i:" + i.id ? "selected" : ""}>${esc(i.name)} (${esc(i.base_unit)})</option>`).join("")}</optgroup>`;
+  }
+  return html;
+}
+function recLineHTML(l, i) {
+  const c = lineCost(l), units = unitsFor(l);
+  if (l.unit && !units.includes(l.unit)) units.push(l.unit);
+  return `<div class="line ${c.problem ? "attn" : ""}" data-ri="${i}">
+    <div class="top"><label class="f"><span>Uses</span><select data-rk="what">${itemOptions(l)}</select></label><button class="btn small danger" data-rdel="${i}">Remove</button></div>
+    <div class="grid g3">
+      <label class="f"><span>Quantity</span><input type="number" step="any" min="0" inputmode="decimal" data-rk="qty" value="${esc(l.qty ?? "")}"></label>
+      <label class="f"><span>Unit</span><select data-rk="unit">${units.map((u) => `<option ${u === l.unit ? "selected" : ""}>${esc(u)}</option>`).join("")}</select></label>
+      <label class="f"><span>Note</span><input type="text" data-rk="note" value="${esc(l.note || "")}" placeholder="e.g. as needed"></label>
+    </div>
+    <div class="calc">${c.problem ? `<span class="err">${esc(c.problem)}</span>` : `${qtyFmt(c.base)} ${esc(c.baseUnit)} × ${fmt$(c.price)} = <b>${fmt$(c.cost)}</b>${c.src === "estimate" ? ' <span class="tag warn">estimate</span>' : ""}${c.missing ? ' <span class="tag bad">part missing</span>' : ""}`}</div>
+  </div>`;
+}
+function recTotals() {
+  let total = 0, missing = 0, est = 0;
+  for (const l of rec.items) { const c = lineCost(l); total += c.cost || 0; if (c.problem || c.missing) missing++; if (c.src === "estimate") est++; }
+  return { total, per: total / (Number(rec.yield_qty) || 1), missing, est };
+}
+function renderRecSummary() {
+  const t = recTotals(), unit = rec.kind === "dish" ? "serve" : rec.yield_unit;
+  $("#recSum").innerHTML = `<span>${rec.kind === "dish" ? "Cost per serve" : "Batch cost"}</span><b>${fmt$(t.total)}</b>
+    ${rec.kind === "component" ? `<span>Cost per ${esc(unit)}</span><b>${fmt$(t.per)}</b>` : ""}
+    ${t.missing ? `<span>Lines missing a price or unit</span><b class="err">${t.missing}</b>` : ""}${t.est ? `<span>Lines using estimates</span><b>${t.est}</b>` : ""}`;
+}
+function sqOptions() {
+  const taken = new Set(rec.links.map((l) => l.item + "\u0000" + l.variation));
+  const byItem = new Map();
+  for (const s of squareItems) { if (!byItem.has(s.item)) byItem.set(s.item, []); byItem.get(s.item).push(s); }
+  let html = `<option value="">Link a Square item…</option>`;
+  for (const [item, vars] of byItem) {
+    const owner = (s) => s.recipe_id && s.recipe_id !== rec.id ? ` (now: ${recipes.find((r) => r.id === s.recipe_id)?.name || "another dish"})` : "";
+    html += `<optgroup label="${esc(item)}">`;
+    if (vars.length > 1) html += `<option value="${esc(JSON.stringify([item, ""]))}" ${taken.has(item + "\u0000") ? "disabled" : ""}>Every variation</option>`;
+    html += vars.map((s) => `<option value="${esc(JSON.stringify([item, s.variation]))}" ${taken.has(item + "\u0000" + s.variation) ? "disabled" : ""}>${esc(s.variation || "(no variation)")} · ${qtyFmt(s.qty_90d)} sold in 90 days${esc(owner(s))}</option>`).join("");
+    html += `</optgroup>`;
+  }
+  return html;
+}
+function renderRecipeForm() {
+  const r = rec, isDish = r.kind === "dish";
+  $("#recKind").innerHTML = `<span class="tag ${isDish ? "good" : "neutral"}">${isDish ? "Dish (one serve)" : "Component (batch)"}</span>`;
+  $("#recForm").innerHTML = `
+    <section class="card grid">
+      <label class="f"><span>Name</span><input type="text" id="rName" value="${esc(r.name)}" maxlength="80" placeholder="${isDish ? "e.g. Jakarta Nasi Goreng, Ayam Goreng" : "e.g. Peanut sauce"}"></label>
+      ${isDish ? "" : `<div class="grid g3">
+        <label class="f"><span>One batch makes</span><input type="number" step="any" min="0" inputmode="decimal" id="rYield" value="${esc(r.yield_qty)}"></label>
+        <label class="f"><span>Unit</span><select id="rUnit">${["serve", "each", "kg", "L"].map((u) => `<option ${u === r.yield_unit ? "selected" : ""}>${u}</option>`).join("")}</select></label>
+        <label class="chk"><input type="checkbox" id="rEst" ${r.yield_estimate ? "checked" : ""}> It's a guess</label>
+      </div>
+      <p class="small muted">${r.batches.length ? `Logged batches: ${r.batches.map((b) => `${esc(dateFmt(b.made_on).replace(/ \d{4}$/, ""))}${Number(b.batches) !== 1 ? ` (×${qtyFmt(b.batches)})` : ""}`).join(", ")}. ` : "No batches logged yet. "}${r.used_in.length ? `Used in: ${esc(r.used_in.join(", "))}.` : ""}</p>`}
+    </section>
+    <section class="grid"><h3>${isDish ? "What goes into one serve" : "What goes into one batch"}</h3><div class="grid" id="rLines">${r.items.map(recLineHTML).join("")}</div>
+      <button class="btn" id="rAdd">Add a line</button></section>
+    <section class="card"><div class="sum" id="recSum"></div></section>
+    ${isDish ? `<section class="card grid"><h3>Square items this dish is</h3>
+      <div class="row" id="rLinks">${r.links.map((l, i) => `<span class="tag neutral" style="font-size:.85rem;padding:4px 10px">${esc(linkText(l))} <button class="btn small" data-rlink="${i}" aria-label="Remove link" style="min-height:24px;padding:0 6px;margin-left:4px">×</button></span>`).join("") || '<span class="small muted">Not linked yet. Its cost won&#39;t count until it is.</span>'}</div>
+      <select id="rLinkAdd">${sqOptions()}</select>
+      <p class="small muted">Names match Square exactly. Pick "Every variation" when all variations use the same recipe.</p></section>` : ""}
+    <label class="f"><span>Method or notes</span><textarea id="rNotes" maxlength="2000">${esc(r.notes || r.method || "")}</textarea></label>
+    <label class="chk"><input type="checkbox" id="rActive" ${r.active ? "checked" : ""}> In use</label>
+    <div id="recMsg" role="status"></div>
+    <div class="sticky-actions"><button class="btn primary" id="rSave">Save</button>${r.kind === "component" && r.id ? `<button class="btn" data-batch-here="${r.id}">Made a batch</button>` : ""}${r.id ? `<button class="btn danger" id="rDel">Delete</button>` : ""}</div>`;
+  renderRecSummary();
+}
+function readRecHeader() {
+  rec.name = $("#rName").value; rec.notes = $("#rNotes").value; rec.active = $("#rActive").checked;
+  if (rec.kind === "component") { rec.yield_qty = Number($("#rYield").value) || 0; rec.yield_unit = $("#rUnit").value; rec.yield_estimate = $("#rEst").checked; }
+}
+$("#recForm").addEventListener("input", (ev) => {
+  recDirty = true;
+  const card = ev.target.closest("[data-ri]");
+  if (!card) { readRecHeader(); renderRecSummary(); return; }
+  const l = rec.items[Number(card.dataset.ri)], k = ev.target.dataset.rk;
+  if (k === "qty") l.qty = ev.target.value === "" ? null : Number(ev.target.value);
+  if (k === "note") l.note = ev.target.value;
+  if (k === "qty") { const t = document.createElement("div"); t.innerHTML = recLineHTML(l, Number(card.dataset.ri)); card.querySelector(".calc").innerHTML = t.querySelector(".calc").innerHTML; }
+  renderRecSummary();
+});
+$("#recForm").addEventListener("change", async (ev) => {
+  recDirty = true;
+  if (ev.target.id === "rLinkAdd") {
+    if (!ev.target.value) return;
+    const [item, variation] = JSON.parse(ev.target.value);
+    rec.links.push({ item, variation }); readRecHeader(); renderRecipeForm(); return;
+  }
+  const card = ev.target.closest("[data-ri]");
+  if (!card) { readRecHeader(); if (ev.target.id === "rUnit") renderRecipeForm(); else renderRecSummary(); return; }
+  const i = Number(card.dataset.ri), l = rec.items[i], k = ev.target.dataset.rk;
+  if (k === "unit") l.unit = ev.target.value;
+  if (k === "what") {
+    let v = ev.target.value;
+    if (v === "new") { const id = await editIngredient(null); v = id ? `i:${id}` : ""; }
+    l.component_id = v.startsWith("c:") ? Number(v.slice(2)) : null;
+    l.ingredient_id = v.startsWith("i:") ? Number(v.slice(2)) : null;
+    l.unit = unitsFor(l)[0];
+  }
+  const t = document.createElement("div"); t.innerHTML = recLineHTML(l, i); card.replaceWith(t.firstElementChild);
+  renderRecSummary();
+});
+$("#recForm").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  if (b.dataset.rdel != null) { rec.items.splice(Number(b.dataset.rdel), 1); recDirty = true; readRecHeader(); renderRecipeForm(); return; }
+  if (b.dataset.rlink != null) { rec.links.splice(Number(b.dataset.rlink), 1); recDirty = true; readRecHeader(); renderRecipeForm(); return; }
+  if (b.dataset.batchHere != null) { if (recDirty) { $("#recMsg").innerHTML = `<p class="err">Save first.</p>`; return; } return logBatch(Number(b.dataset.batchHere)); }
+  if (b.id === "rAdd") { readRecHeader(); rec.items.push({ ingredient_id: null, component_id: null, qty: 1, unit: "each", note: "" }); recDirty = true; $("#rLines").insertAdjacentHTML("beforeend", recLineHTML(rec.items.at(-1), rec.items.length - 1)); return; }
+  if (b.id === "rSave") {
+    readRecHeader(); $("#recMsg").innerHTML = `<div class="progress"><span class="spin"></span><span>Saving…</span></div>`;
+    try {
+      const res = await call({ view: "recipe_save", recipe: { id: rec.id || null, name: rec.name, kind: rec.kind, yield_qty: rec.kind === "dish" ? 1 : rec.yield_qty, yield_unit: rec.kind === "dish" ? "serve" : rec.yield_unit, yield_estimate: !!rec.yield_estimate, notes: rec.notes, active: rec.active,
+        items: rec.items.filter((l) => l.ingredient_id || l.component_id).map((l) => ({ ingredient_id: l.ingredient_id, component_id: l.component_id, qty: l.qty ?? 0, unit: l.unit, note: l.note })),
+        ...(rec.kind === "dish" ? { links: rec.links } : {}) } });
+      await loadRecipes(); recDirty = false;
+      rec = structuredClone(recipes.find((x) => x.id === Number(res.id))); renderRecipeForm();
+      $("#recMsg").innerHTML = `<div class="notice good">Saved.</div>`;
+    } catch (err) { if (err.auth) return signOut(err.message); $("#recMsg").innerHTML = `<div class="notice bad">${esc(err.message)}</div>`; }
+    return;
+  }
+  if (b.id === "rDel") {
+    if (!confirm(`Delete the recipe "${rec.name}"?`)) return;
+    try { await call({ view: "recipe_delete", id: rec.id }); recDirty = false; rec = null; show("recipes"); setStatus("Recipe deleted."); }
+    catch (err) { if (err.auth) return signOut(err.message); $("#recMsg").innerHTML = `<div class="notice bad">${esc(err.message)}</div>`; }
+  }
+});
+$("#recBack").addEventListener("click", () => { if (recDirty && !confirm("Leave without saving your changes?")) return; recDirty = false; rec = null; show("recipes"); });
+
+// ---------- menu costs ----------
+let menuRange = null;
+function menuPreset(p) {
+  const t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const add = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400e3).toISOString().slice(0, 10);
+  const y = add(t, -1);
+  if (p === "fortnight") { const dow = (new Date(t + "T00:00:00Z").getUTCDay() + 6) % 7; const lastSun = add(t, -dow - 1); return { from: add(lastSun, -13), to: lastSun }; }
+  if (p === "90") return { from: add(y, -89), to: y };
+  return { from: add(y, -27), to: y };
+}
+$("#menuPresets").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-mp]");
+  if (b) { $$("#menuPresets [data-mp]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); menuRange = menuPreset(b.dataset.mp); loadMenu(); }
+  if (ev.target.id === "mGo") { $$("#menuPresets [data-mp]").forEach((x) => x.setAttribute("aria-pressed", "false")); menuRange = { from: $("#mFrom").value, to: $("#mTo").value }; loadMenu(); }
+});
+async function loadMenu() {
+  menuRange = menuRange || menuPreset("28");
+  $("#menuTable").innerHTML = `<p class="muted">Loading…</p>`;
+  try {
+    const [m, r] = await Promise.all([call({ view: "menu", ...menuRange }), recipes.length ? Promise.resolve(null) : call({ view: "recipes" })]);
+    if (r) { recipes = r.recipes; squareItems = r.square_items; }
+    renderMenu(m.menu);
+  } catch (err) { handleErr(err); }
+}
+function renderMenu(m) {
+  $("#mFrom").value = m.from; $("#mTo").value = m.to;
+  const t = m.totals, pctOf = (a, b) => b ? (a * 100 / b).toFixed(1) + "%" : "-";
+  $("#menuTiles").innerHTML = [
+    ["Sales ex GST", money(t.sales_ex_gst_cents), `${dateFmt(m.from).replace(/ \d{4}$/, "")} to ${dateFmt(m.to).replace(/ \d{4}$/, "")}`],
+    ["Expected food cost", money(t.expected_cost_cents), `on ${money(t.linked_sales_ex_gst_cents)} of linked sales`],
+    ["Expected food cost %", pctOf(t.expected_cost_cents, t.linked_sales_ex_gst_cents), "target about 35%"],
+    ["Items without a dish", String(t.unlinked_items), t.items_missing_prices ? `${t.items_missing_prices} with missing prices` : "all linked dishes priced"],
+  ].map(([k, v, d]) => `<div class="card" style="padding:12px"><div class="small muted">${esc(k)}</div><div style="font-family:var(--display);font-weight:800;font-size:1.5rem">${esc(v)}</div><div class="small muted">${esc(d)}</div></div>`).join("");
+  $("#menuWarn").innerHTML = t.items_missing_prices || Object.values(m.items).some((i) => i.estimated) ? `<div class="notice warn">Some costs use starting estimates or are missing prices, so treat these as rough until receipts are confirmed.</div>` : "";
+  const rows = m.items.filter((i) => i.kind !== "other");
+  $("#menuTable").innerHTML = rows.length ? `<div class="list">${rows.map((i) => {
+    const pctv = i.food_cost_pct == null ? null : Number(i.food_cost_pct);
+    const tone = pctv == null ? "" : i.missing ? "neutral" : pctv > 0.4 ? "bad" : pctv > 0.35 ? "warn" : "good";
+    const flag = i.missing ? ' <span class="tag bad">prices missing</span>' : i.estimated ? ' <span class="tag warn">uses estimates</span>' : "";
+    return `<div class="item" style="cursor:default">
+      <span class="t">${esc(i.item)}${i.variation && i.variation !== "Regular" ? ` <span class="s">· ${esc(i.variation)}</span>` : ""}</span>
+      <span class="r">${pctv == null ? "" : `<span class="tag ${tone}">${(pctv * 100).toFixed(0)}%${i.missing ? "+" : ""} food cost</span>`}</span>
+      <span class="s">${qtyFmt(i.qty)} sold · ${fmt$(i.avg_price_ex_gst)} ex GST${i.recipe ? ` · cost ${fmt$(i.cost_per_serve)} · margin ${fmt$(Number(i.avg_price_ex_gst) - Number(i.cost_per_serve))}` : ""}${flag}</span>
+      <span class="r">${i.recipe ? `<button class="btn small" data-mrec="${i.recipe_id}">Recipe</button>` : `<button class="btn small primary" data-mlink="${esc(JSON.stringify([i.item, i.variation]))}">Make dish</button>`}</span>
+    </div>`;
+  }).join("")}</div>` : `<p class="muted">No sales in this range.</p>`;
+}
+$("#menuTable").addEventListener("click", (ev) => {
+  const a = ev.target.closest("[data-mrec]"); if (a) return openRecipe(recipes.find((r) => r.id === Number(a.dataset.mrec)));
+  const b = ev.target.closest("[data-mlink]");
+  if (b) { const [item, variation] = JSON.parse(b.dataset.mlink); openRecipe({ kind: "dish", name: variation && variation !== "Regular" ? `${item}, ${variation}` : item, links: [{ item, variation }] }); }
+});
 
 // ---------- sign in ----------
 function signOut(m = "") { pw.clear(); $("#app").hidden = true; $("#signin").hidden = false; $("#signinErr").textContent = m; $("#pw").focus(); }
